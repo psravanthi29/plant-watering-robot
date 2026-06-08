@@ -31,6 +31,15 @@ cutoff per run (see `scheduler.py`).
 
 **Estimated total: ₹3,200–5,800** (Pi is the dominant cost — if you already have one from the Solar project, this drops to roughly ₹1,400–3,300).
 
+> **⚠ Verify before ordering — thread standard (checked 8 June 2026):** Robu.in's own listing for
+> the linked 12V solenoid valve (SKU 31396) describes its ½" outlets as **NPT**, not **BSP** as
+> assumed in rows 6/7 above. NPT and BSP look similar but are NOT interchangeable — using the
+> wrong adapter will leak under pressure. **Before ordering the hose/pipe fitting (row 7),
+> confirm the valve's actual thread standard on the product page or with the seller**, and buy
+> a fitting that matches (NPT-to-hose or BSP-to-hose accordingly). This is exactly the kind of
+> small spec mismatch worth a 2-minute check before ordering — much cheaper than a re-order or
+> a leaking joint on a live line.
+
 ## Notes / things that don't change the list
 - These retailers (Robu.in, Robokits, Robocraze, DNA Technology) all ship pan-India and accept COD — good for a first-timer ordering hobby electronics.
 - If Robu.in is out of stock on any item, Robocraze, Robokits.co.in, FlyRobo, and Amazon.in are reliable fallbacks carrying near-identical parts — search using the **"exact spec to look for"** column, not the brand name, since many of these are generic modules sold by multiple sellers.

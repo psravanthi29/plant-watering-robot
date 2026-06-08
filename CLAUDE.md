@@ -56,9 +56,33 @@ plant_watering/
 - Keep it cheap and safe to fail: this is explicitly the project where mistakes
   should cost nothing more than a soggy plant, not a damaged robot
 
-## Open questions for the next session
-- How many plants / zones to start with? (Recommend: just ONE to start)
-- Arduino-only vs. Raspberry Pi + Arduino split (Solar project uses the split —
-  do we need that much for this, or can we start simpler?)
-- What does "done" look like for v1? (Suggest: water one plant on a schedule,
-  gated by a moisture threshold, with a Flask dashboard showing watering history)
+## Decisions locked in (resolved 8 June 2026)
+- **Zones: ONE.** Single plant / single zone for v1+. Multi-zone is an explicit
+  "v3 stretch goal" — not a current requirement, and the schema/scheduler should
+  stay easy to extend to it later (the `zone` column already exists in `runs`)
+  rather than be redesigned for it now.
+- **Pi-only — no Arduino split.** The Solar project's Pi+Arduino split exists
+  because it juggles multiple sensors/actuators across a moving rig. This build
+  has exactly one sensor and one actuator (solenoid valve via relay), which is
+  comfortably within a single Raspberry Pi's GPIO/SPI capability — adding an
+  Arduino would be pure complexity tax with no benefit here. Keep it simple;
+  this simplicity is itself one of the "lessons that carry over" to Solar
+  (i.e., recognizing when a split is *not* needed).
+- **"Done" for v1/v2 means:** with `SIMULATE = True`, the system reliably
+  waters one (simulated) plant on a schedule — gated by moisture threshold,
+  time-of-day window, and `MAX_WATER_SECONDS` — with every decision logged to
+  `plant.db`, visible on the Flask dashboard, and covered by passing tests.
+  That bar is now MET in software. "Done" for the *hardware* phase additionally
+  means: the same logic running unmodified (`SIMULATE = False`) against real
+  GPIO/ADC/relay/valve hardware, watering a real plant for at least one full
+  real-world day without manual intervention or a flood/dry-run incident.
+
+## Next steps (as of 8 June 2026)
+1. Strengthen tests around `plant_state.py`'s state machine and
+   `MAX_WATER_SECONDS` edge cases; run a longer multi-day simulated scenario.
+2. Wire up a recurring scheduled check (timer-driven `check_and_water()` call)
+   so the system behaves like it would in deployment, still in SIMULATE mode.
+3. Walk the Hardware Purchase List, re-confirm current prices/stock on the
+   linked India retailers, and place the Stage 1 hardware order.
+4. Once hardware arrives: follow `Hardware_Assembly_Guide.docx` Stage 0 onward,
+   flip `SIMULATE = False`, and validate against the "hardware done" bar above.
