@@ -1,7 +1,7 @@
 """Flask REST API / dashboard for the plant-watering robot (SIMULATE-aware)."""
 
 import sqlite3
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
 load_dotenv()  # loads GOOGLE_API_KEY (and others) from .env if present
@@ -39,7 +39,7 @@ from crop_planner import (
     set_setting,
     sync_tasks,
 )
-from crop_care import care_schedule, split_past_upcoming
+from crop_care import care_schedule, sowing_params, split_past_upcoming
 
 app = Flask(__name__)
 
@@ -89,10 +89,10 @@ PAGE = """
   {% endfor %}
 </table>
 
-<h2>📷 Plant Vision Analysis</h2>
+<h2 id="vision">📷 Plant Vision Analysis</h2>
 <form id="analyzeForm" action="/analyze" method="post" enctype="multipart/form-data">
   <label>Zone</label>
-  <input type="text" name="zone" value="zone-1">
+  <input type="text" name="zone" value="{{ default_zone }}">
   <label>Plant types (optional)</label>
   <input type="text" name="plant_types" placeholder="e.g. tomato, curry leaf, basil">
 
@@ -286,6 +286,15 @@ PLANNER_STYLE = """
   .empty { text-align:center; padding: 26px 10px; color:#999; }
   .demand-form { display:flex; gap:6px; align-items:center; margin-top:6px; }
   .demand-form input { width: 92px; }
+  .tabs { display:flex; gap:6px; margin: 12px 0 4px; position: sticky; top: 0;
+          background: #fcfcfa; padding: 6px 0; z-index: 5; }
+  .tabbtn { flex:1; padding: 10px 6px; font-size: 0.95em; border: 1px solid #ddd;
+            border-radius: 10px; background: #fff; cursor: pointer; font-weight: 600;
+            color: #666; }
+  .tabbtn.active { background: var(--green); color: #fff; border-color: var(--green); }
+  .params { margin-top: 5px; font-size: 0.85em; background: var(--green-soft);
+            border-radius: 8px; padding: 5px 10px; display: inline-block; }
+  details.card summary { padding: 0; font-weight: normal; }
 </style>
 """
 
@@ -298,17 +307,34 @@ PLANNER_PAGE = """
 <h1>🗓 Garden Planner</h1>
 <p class="muted">Feeding {{ household_size }} people · plan starts {{ start_date }}</p>
 
-<h2>📋 To-do — sow these</h2>
-{% if not tasks_pending %}
-<div class="card empty">Nothing waiting to be sown.
-{% if not rows %}Add your first crop below to get a plan. 👇{% else %}You're all caught up! 🎉{% endif %}</div>
+<div class="tabs">
+  <button class="tabbtn active" onclick="showTab('today', this)">📌 Today</button>
+  <button class="tabbtn" onclick="showTab('garden', this)">🥬 My garden</button>
+  <button class="tabbtn" onclick="showTab('settings', this)">⚙️ Settings</button>
+</div>
+
+<!-- ============ TAB: TODAY ============ -->
+<div id="tab-today" class="tab">
+
+{% set due_sowings = tasks_pending | selectattr('due_now') | list %}
+{% set later_sowings = tasks_pending | rejectattr('due_now') | list %}
+
+{% if not due_sowings and not care_due and not tasks_done %}
+<div class="card empty">Nothing to do today.
+{% if not rows %}Add your first crop in <b>My garden</b> to get a plan. 🥬{% else %}All caught up! 🎉{% endif %}</div>
 {% endif %}
-{% for t in tasks_pending %}
+
+{% if due_sowings %}
+<h2>🌰 Sow now</h2>
+{% for t in due_sowings %}
 <div class="card task {{ 'overdue' if t.sow_date < today }}">
   <div class="what">
     <span class="when">{{ t.sow_date }}</span>
     {% if t.sow_date < today %}<span class="chip amber">overdue</span>{% endif %}<br>
-    Sow <b>{{ t.batch_size }}</b> × <b>{{ t.display }}</b>
+    <b>{{ t.batch_size }}</b> × <b>{{ t.display }}</b>
+    {% if t.sow %}
+    <div class="params">🌰 {{ t.sow.depth }} deep · ↔ {{ t.sow.spacing }} · {{ t.sow.method }}</div>
+    {% endif %}
   </div>
   <form action="/planner/task/done" method="post" style="margin:0">
     <input type="hidden" name="task_id" value="{{ t.id }}">
@@ -316,17 +342,37 @@ PLANNER_PAGE = """
   </form>
 </div>
 {% endfor %}
+{% endif %}
+
+{% if care_due %}
+<h2>🌿 Care due</h2>
+{% for e in care_due %}
+<details class="card" style="padding:10px 14px">
+  <summary><b>{{ e.crop }}</b> — {{ e.title }}
+    <span class="muted">{{ e.date }}</span>
+    {% if e.overdue %}<span class="chip amber">overdue</span>{% endif %}
+  </summary>
+  <div style="font-size:0.9em; margin-top:6px">{{ e.note }}</div>
+  <a href="/planner/care/{{ e.task_id }}" class="muted">full care plan →</a>
+</details>
+{% endfor %}
+{% endif %}
 
 {% if tasks_done %}
-<h2>🌿 Growing now — tap for care plan</h2>
+<h2>🪴 Growing now</h2>
 {% for t in tasks_done %}
 <div class="card task">
   <div class="what">
     <b>{{ t.display }}</b> <span class="chip">sown {{ t.done_on }}</span><br>
-    <span class="muted">{{ t.batch_size }} plants</span>
+    {% if t.next_title %}
+    <span class="muted">Next: {{ t.next_title }} · <b>{{ t.next_date }}</b></span>
+    {% else %}
+    <span class="muted">{{ t.batch_size }} plants · wrapping up</span>
+    {% endif %}
   </div>
   <div style="display:flex; gap:8px; align-items:center">
-    <a class="btn btn-amber" href="/planner/care/{{ t.id }}">🌿 Care plan</a>
+    <a class="btn btn-amber" href="/planner/care/{{ t.id }}">Care plan</a>
+    <a class="btn" style="background:var(--blue); padding:10px 12px" href="/zone/{{ t.zone }}" title="Photo timeline">📈</a>
     <form action="/planner/task/undo" method="post" style="margin:0">
       <input type="hidden" name="task_id" value="{{ t.id }}">
       <button class="btn-ghost btn" type="submit" title="Undo">↩</button>
@@ -335,6 +381,32 @@ PLANNER_PAGE = """
 </div>
 {% endfor %}
 {% endif %}
+
+{% if later_sowings %}
+<details>
+  <summary>📅 Later sowings ({{ later_sowings|length }})</summary>
+  {% for t in later_sowings %}
+  <div class="card task">
+    <div class="what">
+      <span class="when">{{ t.sow_date }}</span><br>
+      <b>{{ t.batch_size }}</b> × <b>{{ t.display }}</b>
+      {% if t.sow %}
+      <div class="params">🌰 {{ t.sow.depth }} deep · ↔ {{ t.sow.spacing }} · {{ t.sow.method }}</div>
+      {% endif %}
+    </div>
+    <form action="/planner/task/done" method="post" style="margin:0">
+      <input type="hidden" name="task_id" value="{{ t.id }}">
+      <button class="btn" type="submit">✓ Mark sown</button>
+    </form>
+  </div>
+  {% endfor %}
+</details>
+{% endif %}
+
+</div>
+
+<!-- ============ TAB: MY GARDEN ============ -->
+<div id="tab-garden" class="tab" style="display:none">
 
 <h2>🥬 My crops ({{ rows|length }})</h2>
 {% if not rows %}
@@ -394,8 +466,10 @@ how many plants you need and when to sow.</div>
   </form>
 </div>
 
-<details>
-  <summary>⚙️ Settings</summary>
+</div>
+
+<!-- ============ TAB: SETTINGS ============ -->
+<div id="tab-settings" class="tab" style="display:none">
   <div class="card">
     <form action="/planner/settings" method="post" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end">
       <label>People to feed<br>
@@ -408,7 +482,16 @@ how many plants you need and when to sow.</div>
     that's on "auto" demand. Crop yields/timings are editable estimates — tune as you learn
     your garden's real numbers.</p>
   </div>
-</details>
+</div>
+
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
+  document.getElementById('tab-' + name).style.display = 'block';
+  document.querySelectorAll('.tabbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+</script>
 """
 
 CARE_PAGE = """
@@ -418,7 +501,17 @@ CARE_PAGE = """
 """ + PLANNER_STYLE + """
 <div class="topnav"><a href="/planner">&larr; Planner</a></div>
 <h1>🌿 {{ task.display }}</h1>
-<p class="muted">{{ task.batch_size }} plants · sown {{ sown_on }}</p>
+<p class="muted">{{ task.batch_size }} plants · sown {{ sown_on }} · zone <b>{{ zone }}</b></p>
+
+<div class="card" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+  <form action="/check" method="post" style="margin:0">
+    <input type="hidden" name="zone" value="{{ zone }}">
+    <input type="hidden" name="next" value="/planner/care/{{ task.id }}">
+    <button class="btn" type="submit">💧 Watering check</button>
+  </form>
+  <a class="btn btn-amber" href="/?zone={{ zone }}#vision">📷 Analyze photos</a>
+  <a class="btn" style="background:var(--blue)" href="/zone/{{ zone }}">📈 Photo timeline</a>
+</div>
 
 <h2>📌 Up next</h2>
 {% if not upcoming %}
@@ -426,24 +519,24 @@ CARE_PAGE = """
 Check the planner for your next sowing.</div>
 {% endif %}
 {% for e in upcoming %}
-<div class="card {{ 'task overdue' if loop.first }}">
-  <span class="when" style="font-weight:700;color:var(--green)">{{ e.date }}</span>
-  <span class="muted">(day {{ e.day }})</span>
-  {% if loop.first %}<span class="chip amber">next up</span>{% endif %}
-  <div style="margin-top:4px"><b>{{ e.title }}</b></div>
-  <div style="font-size:0.92em; margin-top:2px">{{ e.note }}</div>
-</div>
+<details class="card" style="padding:10px 14px" {{ 'open' if loop.first }}>
+  <summary>
+    <span style="font-weight:700;color:var(--green)">{{ e.date }}</span>
+    <b>{{ e.title }}</b>
+    {% if loop.first %}<span class="chip amber">next up</span>{% endif %}
+  </summary>
+  <div style="font-size:0.92em; margin-top:6px">{{ e.note }}</div>
+</details>
 {% endfor %}
 
 {% if past %}
 <details>
   <summary>✅ Earlier steps ({{ past|length }})</summary>
   {% for e in past %}
-  <div class="card" style="opacity:0.65">
-    <span class="muted">{{ e.date }} (day {{ e.day }})</span>
-    <div><b>{{ e.title }}</b></div>
-    <div style="font-size:0.9em">{{ e.note }}</div>
-  </div>
+  <details class="card" style="opacity:0.7; padding:8px 14px">
+    <summary><span class="muted">{{ e.date }}</span> {{ e.title }}</summary>
+    <div style="font-size:0.9em; margin-top:4px">{{ e.note }}</div>
+  </details>
   {% endfor %}
 </details>
 {% endif %}
@@ -473,7 +566,8 @@ def get_vision_logs(limit=10):
 @app.route("/")
 def dashboard():
     return render_template_string(
-        PAGE, runs=get_runs(), vision_logs=get_vision_logs(), last_analysis=None
+        PAGE, runs=get_runs(), vision_logs=get_vision_logs(), last_analysis=None,
+        default_zone=request.args.get("zone", "zone-1"),
     )
 
 
@@ -484,8 +578,13 @@ def api_runs():
 
 @app.route("/check", methods=["POST"])
 def check():
-    state = check_and_water()
-    return jsonify({"state": state}), 200
+    zone = request.form.get("zone", "zone-1")
+    state = check_and_water(zone=zone)
+    # Form posts from the care page pass `next` to return where they came from
+    nxt = request.form.get("next")
+    if nxt and nxt.startswith("/"):
+        return redirect(nxt)
+    return jsonify({"zone": zone, "state": state}), 200
 
 
 @app.route("/analyze", methods=["POST"])
@@ -516,6 +615,7 @@ def analyze():
         runs=get_runs(),
         vision_logs=get_vision_logs(),
         last_analysis=result["analysis"],
+        default_zone=zone,
     )
 
 
@@ -601,14 +701,54 @@ def _build_planner_view(conn):
     tasks_pending.sort(key=lambda t: t["sow_date"])
     tasks_done.sort(key=lambda t: t["done_on"] or "", reverse=True)
 
+    today = date.today()
+    crops_by_id = {c["id"]: c for c in crops}
+
+    def crop_for_task(t):
+        c = crops_by_id.get(t["crop_row_id"])
+        if c is None and t["crop_key"] in SEED_LIBRARY:
+            c = crop_from_library(t["crop_key"])
+            c["key"] = t["crop_key"]
+        return c
+
+    # Pre-sowing parameters on every pending task (depth/spacing/method)
+    for t in tasks_pending:
+        c = crop_for_task(t)
+        t["sow"] = sowing_params(c) if c else None
+        t["due_now"] = t["sow_date"] <= (today + timedelta(days=3)).isoformat()
+
+    # Event-driven milestones: next care action per growing planting,
+    # plus an aggregate "care due now" feed (overdue 3 days back, due 3 ahead)
+    care_due = []
+    for t in tasks_done:
+        t["zone"] = t["crop_key"] or t["display"].lower().replace(" ", "-")
+        c = crop_for_task(t)
+        if c is None:
+            t["next_title"], t["next_date"] = None, None
+            continue
+        sown = datetime.strptime(t["done_on"] or t["sow_date"], "%Y-%m-%d").date()
+        events = care_schedule(c, sown)
+        upcoming = [e for e in events if e["date"] >= today]
+        t["next_title"] = upcoming[0]["title"] if upcoming else None
+        t["next_date"] = upcoming[0]["date"].isoformat() if upcoming else None
+        for e in events:
+            if today - timedelta(days=3) <= e["date"] <= today + timedelta(days=3):
+                care_due.append({
+                    "task_id": t["id"], "crop": t["display"],
+                    "date": e["date"].isoformat(), "title": e["title"],
+                    "note": e["note"], "overdue": e["date"] < today,
+                })
+    care_due.sort(key=lambda e: e["date"])
+
     return {
         "household_size": household,
         "start_date": start.isoformat(),
-        "today": date.today().isoformat(),
+        "today": today.isoformat(),
         "library": SEED_LIBRARY,
         "rows": rows,
         "tasks_pending": tasks_pending,
         "tasks_done": tasks_done,
+        "care_due": care_due,
         "total_plants": total_plants,
         "total_area": round(total_area, 2),
     }
@@ -730,8 +870,12 @@ def planner_care(task_id):
     events = care_schedule(crop, sow_d)
     past, upcoming = split_past_upcoming(events, date.today())
 
+    # The planting's zone keys both the watering log and the photo timeline
+    zone = task["crop_key"] or task["display"].lower().replace(" ", "-")
+
     return render_template_string(
-        CARE_PAGE, task=task, sown_on=sown_on, past=past, upcoming=upcoming
+        CARE_PAGE, task=task, sown_on=sown_on, past=past, upcoming=upcoming,
+        zone=zone,
     )
 
 

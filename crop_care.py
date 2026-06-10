@@ -11,6 +11,51 @@ renders these against a sowing task's actual sown date.
 
 from datetime import date, timedelta
 
+# Seed-size / planting-depth groups (rule of thumb: depth ≈ 2-3× seed size).
+TUBER_DEPTH = {
+    "potato": "8–10 cm", "ginger": "5–8 cm", "colocasia": "5–8 cm",
+    "garlic": "3–5 cm (clove, tip up)", "sweet_potato": "5–8 cm (slip/cutting)",
+    "onion": "1–2 cm",
+}
+LARGE_SEEDS = {
+    "beans", "cowpea", "field_beans", "cluster_beans", "okra", "cucumber",
+    "dosakaya", "bottle_gourd", "ridge_gourd", "bitter_gourd", "snake_gourd",
+    "ash_gourd", "pumpkin",
+}
+# Direct-sow-only: taprooted / resent transplanting even though seeds are small.
+NO_TRANSPLANT = {"carrot", "radish", "beetroot", "coriander", "fenugreek"} | LARGE_SEEDS
+
+
+def sowing_params(crop: dict) -> dict:
+    """Compact pre-sowing parameters: method, depth, spacing.
+
+    Shown on the to-do card BEFORE sowing so the user has the numbers in hand.
+    """
+    key = crop.get("key", "")
+    transplant = int(crop.get("seed_to_transplant_days", 0) or 0)
+    spacing = f"{int(crop['spacing_cm'])} cm apart"
+
+    if crop["type"] == "perennial":
+        method = "plant once (sapling/cutting), permanent spot"
+    elif transplant > 0:
+        method = f"seed tray OK → transplant ~day {transplant}"
+    elif key in NO_TRANSPLANT:
+        method = "direct sow only (hates transplanting)"
+    else:
+        method = "direct sow"
+
+    if key in TUBER_DEPTH:
+        depth = TUBER_DEPTH[key]
+    elif key in LARGE_SEEDS:
+        depth = "2–3 cm"
+    elif crop.get("category") == "leafy":
+        depth = "0.5–1 cm"
+    else:
+        depth = "1–2 cm"
+
+    return {"method": method, "depth": depth, "spacing": spacing}
+
+
 # Crops that climb / vine and need a trellis or stake early.
 CLIMBERS = {
     "tomato", "cucumber", "bottle_gourd", "ridge_gourd", "bitter_gourd",
@@ -83,19 +128,16 @@ def care_schedule(crop: dict, sow_date: date) -> list:
             "note": note,
         })
 
-    # Day 0 — sowing instructions
-    if crop["type"] == "perennial":
-        add(0, "🌱 Plant",
-            f"Plant in its permanent spot — it stays for years. Allow {spacing} cm "
-            "footprint, dig in compost, water deeply after planting.")
-    elif transplant_offset > 0:
-        add(0, "🌱 Sow in seed tray",
-            "Sow in a seed tray / small cups (2 seeds per cell, thin to the stronger "
-            "one). Keep in bright shade, soil just-moist.")
-    else:
-        add(0, "🌱 Direct sow",
-            f"Sow directly where it will grow, ~1–2 cm deep, final spacing {spacing} cm. "
-            "Water gently with a fine rose so seeds don't wash out.")
+    # Day 0 — sown (compact; the detailed how-to lives on the PRE-sowing task card)
+    sp = sowing_params(crop)
+    add(0, "🌱 Sown",
+        f"{sp['method']} · depth {sp['depth']} · {sp['spacing']}. Water gently.")
+
+    # First watering — links the planner to the watering system
+    add(1, "💧 First watering",
+        "Keep evenly moist while germinating. After that, water when the top "
+        "2–3 cm feels dry — or run a watering check from this page and let the "
+        "moisture-gated system decide (logs to the watering history).")
 
     # Germination check
     add(7, "👀 Germination check",

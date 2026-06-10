@@ -1,0 +1,102 @@
+{
+  "C:\\Claude Projects\\Plant watering\\.claude\\launch.json": {
+    "mtime": 1781068351.2555046,
+    "ast_hash": "986d8beac8672a74807728feb50ca292",
+    "semantic_hash": "986d8beac8672a74807728feb50ca292"
+  },
+  "C:\\Claude Projects\\Plant watering\\app.py": {
+    "mtime": 1781069411.2010317,
+    "ast_hash": "f8f9cded0551feadfda0f3cef1eb7b45",
+    "semantic_hash": "f8f9cded0551feadfda0f3cef1eb7b45"
+  },
+  "C:\\Claude Projects\\Plant watering\\crop_care.py": {
+    "mtime": 1781069294.9328296,
+    "ast_hash": "1baed80884d8a50ea02a246f8feee25d",
+    "semantic_hash": "1baed80884d8a50ea02a246f8feee25d"
+  },
+  "C:\\Claude Projects\\Plant watering\\crop_planner.py": {
+    "mtime": 1781067913.2265687,
+    "ast_hash": "2c420029b3a293b4da82696d1d2fbb2c",
+    "semantic_hash": "2c420029b3a293b4da82696d1d2fbb2c"
+  },
+  "C:\\Claude Projects\\Plant watering\\plant_state.py": {
+    "mtime": 1780852901.0467339,
+    "ast_hash": "0e3c6b007af272ec9a6177f5248bb553",
+    "semantic_hash": "0e3c6b007af272ec9a6177f5248bb553"
+  },
+  "C:\\Claude Projects\\Plant watering\\scheduler.py": {
+    "mtime": 1780852883.3749914,
+    "ast_hash": "610128330e8f5078b9efdbf8f4c97d0c",
+    "semantic_hash": "610128330e8f5078b9efdbf8f4c97d0c"
+  },
+  "C:\\Claude Projects\\Plant watering\\tests\\test_crop_care.py": {
+    "mtime": 1781069423.0177758,
+    "ast_hash": "2ee8b20fb8542bb116155a7710cec783",
+    "semantic_hash": "2ee8b20fb8542bb116155a7710cec783"
+  },
+  "C:\\Claude Projects\\Plant watering\\tests\\test_crop_planner.py": {
+    "mtime": 1781035481.3113098,
+    "ast_hash": "dff28188508be456bcfc660042892f35",
+    "semantic_hash": "dff28188508be456bcfc660042892f35"
+  },
+  "C:\\Claude Projects\\Plant watering\\tests\\test_plant_state.py": {
+    "mtime": 1780918536.9559903,
+    "ast_hash": "789db517df3249c8cee53634c61347f9",
+    "semantic_hash": "789db517df3249c8cee53634c61347f9"
+  },
+  "C:\\Claude Projects\\Plant watering\\tests\\test_scheduler.py": {
+    "mtime": 1780852907.2565105,
+    "ast_hash": "dfba707592351d29a70b0b99233d9e95",
+    "semantic_hash": "dfba707592351d29a70b0b99233d9e95"
+  },
+  "C:\\Claude Projects\\Plant watering\\vision_analysis.py": {
+    "mtime": 1781033391.013293,
+    "ast_hash": "a7e5b46370e923ee782b7c728520852a",
+    "semantic_hash": "a7e5b46370e923ee782b7c728520852a"
+  },
+  "C:\\Claude Projects\\Plant watering\\CLAUDE.md": {
+    "mtime": 1781034165.659665,
+    "ast_hash": "e5627f9cbe47befdc1c4fc5966aeb964",
+    "semantic_hash": "e5627f9cbe47befdc1c4fc5966aeb964"
+  },
+  "C:\\Claude Projects\\Plant watering\\memory\\garden-planner.md": {
+    "mtime": 1781068181.31291,
+    "ast_hash": "34d01e8b7111a6560f4b94ce89956a24",
+    "semantic_hash": "34d01e8b7111a6560f4b94ce89956a24"
+  },
+  "C:\\Claude Projects\\Plant watering\\memory\\image-feedback-vision.md": {
+    "mtime": 1780980670.6610546,
+    "ast_hash": "9932a3c944848ee8817b37a8fbd1bf90",
+    "semantic_hash": "9932a3c944848ee8817b37a8fbd1bf90"
+  },
+  "C:\\Claude Projects\\Plant watering\\memory\\plant-treatment-expansion.md": {
+    "mtime": 1780980064.7749522,
+    "ast_hash": "f83b4478b5c549df485513ee76735503",
+    "semantic_hash": "f83b4478b5c549df485513ee76735503"
+  },
+  "C:\\Claude Projects\\Plant watering\\memory\\scaling-to-terrace-garden.md": {
+    "mtime": 1780923082.6962729,
+    "ast_hash": "82186d577cfad6e1c2dc00f0d062ed7a",
+    "semantic_hash": "82186d577cfad6e1c2dc00f0d062ed7a"
+  },
+  "C:\\Claude Projects\\Plant watering\\memory\\shopping-list-india.md": {
+    "mtime": 1780918674.456987,
+    "ast_hash": "abfaed23710573a6114bad8029d3ac2c",
+    "semantic_hash": "abfaed23710573a6114bad8029d3ac2c"
+  },
+  "C:\\Claude Projects\\Plant watering\\memory\\soil-root-robot.md": {
+    "mtime": 1781033686.6268785,
+    "ast_hash": "ab5020d8d988cf9d9a6b99c806fe9f76",
+    "semantic_hash": "ab5020d8d988cf9d9a6b99c806fe9f76"
+  },
+  "C:\\Claude Projects\\Plant watering\\memory\\why-this-project.md": {
+    "mtime": 1780849841.7366345,
+    "ast_hash": "51d4da84f62effd309522ebc750983ce",
+    "semantic_hash": "51d4da84f62effd309522ebc750983ce"
+  },
+  "C:\\Claude Projects\\Plant watering\\requirements.txt": {
+    "mtime": 1781029428.5887606,
+    "ast_hash": "6292c355a23ba1b89e98484329bf679e",
+    "semantic_hash": "6292c355a23ba1b89e98484329bf679e"
+  }
+}

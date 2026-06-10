@@ -1,0 +1,375 @@
+{
+  "nodes": [
+    {
+      "id": "claude_project_context",
+      "label": "Plant Watering Robot — Project Context",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "claude_requirements",
+      "label": "Requirements",
+      "file_type": "document",
+      "source_file": "requirements.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "memory_garden_planner",
+      "label": "Garden Planner",
+      "file_type": "rationale",
+      "source_file": "memory/garden-planner.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "memory_image_feedback_vision",
+      "label": "Image Feedback Loop",
+      "file_type": "rationale",
+      "source_file": "memory/image-feedback-vision.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "memory_plant_treatment_expansion",
+      "label": "Plant Treatment Expansion",
+      "file_type": "rationale",
+      "source_file": "memory/plant-treatment-expansion.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "memory_scaling_to_terrace_garden",
+      "label": "Scaling to Terrace Garden",
+      "file_type": "rationale",
+      "source_file": "memory/scaling-to-terrace-garden.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "memory_shopping_list_india",
+      "label": "Shopping List (India)",
+      "file_type": "document",
+      "source_file": "memory/shopping-list-india.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "memory_soil_root_robot",
+      "label": "Soil Root Robot",
+      "file_type": "rationale",
+      "source_file": "memory/soil-root-robot.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "memory_why_this_project",
+      "label": "Why This Project",
+      "file_type": "rationale",
+      "source_file": "memory/why-this-project.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "plant_watering_plant_state",
+      "label": "plant_state.py",
+      "file_type": "code",
+      "source_file": "plant_state.py",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "plant_watering_scheduler",
+      "label": "scheduler.py",
+      "file_type": "code",
+      "source_file": "scheduler.py",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "plant_watering_app",
+      "label": "app.py",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "plant_watering_vision_analysis",
+      "label": "vision_analysis.py",
+      "file_type": "code",
+      "source_file": "vision_analysis.py",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "plant_watering_crop_planner",
+      "label": "crop_planner.py",
+      "file_type": "code",
+      "source_file": "crop_planner.py",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "plant_watering_crop_care",
+      "label": "crop_care.py",
+      "file_type": "code",
+      "source_file": "crop_care.py",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "claude_project_context",
+      "target": "memory_why_this_project",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_project_context",
+      "target": "plant_watering_plant_state",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_project_context",
+      "target": "plant_watering_scheduler",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_project_context",
+      "target": "plant_watering_app",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_project_context",
+      "target": "memory_image_feedback_vision",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_project_context",
+      "target": "memory_scaling_to_terrace_garden",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_project_context",
+      "target": "memory_plant_treatment_expansion",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "claude_project_context",
+      "target": "memory_soil_root_robot",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "memory_garden_planner",
+      "target": "plant_watering_crop_planner",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "memory/garden-planner.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "memory_garden_planner",
+      "target": "plant_watering_app",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "memory/garden-planner.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "memory_garden_planner",
+      "target": "plant_watering_crop_care",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "memory/garden-planner.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "memory_image_feedback_vision",
+      "target": "plant_watering_vision_analysis",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "memory/image-feedback-vision.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "memory_image_feedback_vision",
+      "target": "plant_watering_app",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "memory/image-feedback-vision.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "memory_scaling_to_terrace_garden",
+      "target": "plant_watering_scheduler",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "memory/scaling-to-terrace-garden.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "memory_scaling_to_terrace_garden",
+      "target": "plant_watering_plant_state",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "memory/scaling-to-terrace-garden.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "memory_shopping_list_india",
+      "target": "plant_watering_scheduler",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "memory/shopping-list-india.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "memory_shopping_list_india",
+      "target": "plant_watering_plant_state",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "memory/shopping-list-india.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "memory_soil_root_robot",
+      "target": "memory_image_feedback_vision",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "memory/soil-root-robot.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "memory_soil_root_robot",
+      "target": "memory_plant_treatment_expansion",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "memory/soil-root-robot.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "plant_watering_scheduler",
+      "target": "plant_watering_plant_state",
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "input_tokens": 15373,
+  "output_tokens": 2181,
+  "failed_chunks": 0
+}

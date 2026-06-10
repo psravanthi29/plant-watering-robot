@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from crop_care import CLIMBERS, care_schedule, split_past_upcoming
+from crop_care import CLIMBERS, care_schedule, sowing_params, split_past_upcoming
 from crop_planner import (
     SEED_LIBRARY,
     compute_crop_plan,
@@ -61,6 +61,27 @@ def test_split_past_upcoming():
     assert all(e["date"] < today for e in past)
     assert all(e["date"] >= today for e in upcoming)
     assert len(past) + len(upcoming) == len(events)
+
+
+# --- pre-sowing parameters ----------------------------------------------------
+
+def test_sowing_params_for_every_crop():
+    for key in SEED_LIBRARY:
+        p = sowing_params(_crop(key))
+        assert p["method"] and p["depth"] and p["spacing"], f"{key}: incomplete params"
+
+
+def test_sowing_params_method_classification():
+    assert "transplant" in sowing_params(_crop("tomato"))["method"]      # tray-raised
+    assert "hates transplanting" in sowing_params(_crop("carrot"))["method"]
+    assert "plant once" in sowing_params(_crop("mango"))["method"]       # perennial
+    assert sowing_params(_crop("spinach"))["method"] == "direct sow"
+
+
+def test_sowing_params_depth_by_seed_size():
+    assert sowing_params(_crop("potato"))["depth"] == "8–10 cm"          # tuber
+    assert sowing_params(_crop("bottle_gourd"))["depth"] == "2–3 cm"     # large seed
+    assert sowing_params(_crop("spinach"))["depth"] == "0.5–1 cm"        # leafy
 
 
 # --- sowing task lifecycle ----------------------------------------------------

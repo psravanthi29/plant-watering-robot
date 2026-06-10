@@ -5,3 +5,4 @@ plant.db
 .DS_Store
 .env
 captures/
+graphify-out/cache/
