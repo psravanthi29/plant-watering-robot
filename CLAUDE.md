@@ -86,3 +86,26 @@ plant_watering/
    linked India retailers, and place the Stage 1 hardware order.
 4. Once hardware arrives: follow `Hardware_Assembly_Guide.docx` Stage 0 onward,
    flip `SIMULATE = False`, and validate against the "hardware done" bar above.
+
+## Future enhancements (forward-looking — NOT current build targets)
+These are captured ideas, not committed work. Each has a full design write-up in
+project memory (see `MEMORY.md` index). Build a purchase list for any of them only
+*if and when* we actually start it — don't pre-buy.
+
+1. **Image feedback loop** *(software already built)* — per-zone plant photos →
+   Gemini Vision → health diagnosis, with a per-zone progress timeline that
+   compares photos over days. Live in `app.py` / `vision_analysis.py`. Optional
+   future hardware: Pi Camera or USB webcam for automated capture.
+   See `memory/image-feedback-vision.md`.
+2. **Terrace-garden scaling** — extend the single zone to ~50 plants via ~5–10
+   zones (drip manifolds + emitters), not 50 valves. Schema/scheduler already
+   zone-aware. See `memory/scaling-to-terrace-garden.md`.
+3. **Plant treatment (pH/EC/nutrient dosing)** — peristaltic pumps + analog
+   pH/EC sensors on the spare ADC channels + multi-channel relay; multi-step
+   treatment state machine. See `memory/plant-treatment-expansion.md`.
+4. **Below-ground / root sensing** — diagnose root rot, nematodes, anaerobic
+   zones, compaction *without pulling the plant*, via a buried clear
+   minirhizotron tube + borescope (feeds the existing vision timeline) and a
+   root-depth sensor probe (moisture/temp/EC/pH/**redox**). A true burrowing
+   "worm" robot is research-frontier and explicitly out of scope. Purchase list
+   to be built later if/when we start. See `memory/soil-root-robot.md`.
