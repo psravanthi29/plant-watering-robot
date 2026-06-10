@@ -10,7 +10,9 @@ from flask import (
     Flask, jsonify, redirect, render_template_string, request, send_from_directory,
 )
 
-from plant_state import DB_PATH, check_and_water, init_db
+import os
+
+from plant_state import DB_PATH, check_and_water, init_db, log_reading
 from vision_analysis import (
     CAPTURES_DIR,
     analyze_images,
@@ -70,6 +72,20 @@ PAGE = """
 
 <h1>🌱 Plant Watering Dashboard</h1>
 <p>🗓 <a href="/planner">Garden Planner</a> — plan sowing dates, plant counts &amp; spacing for year-round produce</p>
+
+<h2>📡 Live sensor readings</h2>
+{% if latest_readings %}
+<table border="1" cellpadding="4">
+  <tr><th>Zone</th><th>Moisture</th><th>Last reading</th></tr>
+  {% for r in latest_readings %}
+  <tr><td>{{ r['zone'] }}</td><td>{{ r['value'] }}%</td><td>{{ r['timestamp'][:19] }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}
+<p style="color:#888">No sensor readings yet. A sensor agent (see <code>sensor_agent.py</code>)
+pushes readings to <code>POST /api/reading</code> over the network.</p>
+{% endif %}
+
 <form action="/check" method="post">
   <button class="btn btn-green" type="submit">💧 Run watering check now</button>
 </form>
@@ -568,12 +584,82 @@ def dashboard():
     return render_template_string(
         PAGE, runs=get_runs(), vision_logs=get_vision_logs(), last_analysis=None,
         default_zone=request.args.get("zone", "zone-1"),
+        latest_readings=get_latest_readings(),
     )
 
 
 @app.route("/api/runs")
 def api_runs():
     return jsonify([dict(r) for r in get_runs()])
+
+
+SENSOR_API_TOKEN = os.environ.get("SENSOR_API_TOKEN")  # set in .env for real deployments
+
+
+@app.route("/api/reading", methods=["POST"])
+def api_reading():
+    """Ingest a sensor reading pushed over the network by a sensor agent.
+
+    Body (JSON): {"zone": "...", "value": <float>, "sensor": "moisture", "token": "..."}
+    Token may also be sent as the X-API-Key header. If SENSOR_API_TOKEN is set in
+    the environment, it is required; otherwise (dev) any push is accepted.
+    """
+    data = request.get_json(silent=True) or {}
+    token = request.headers.get("X-API-Key") or data.get("token")
+    if SENSOR_API_TOKEN and token != SENSOR_API_TOKEN:
+        return jsonify({"error": "unauthorized"}), 401
+
+    zone = data.get("zone")
+    value = data.get("value")
+    sensor = data.get("sensor", "moisture")
+    if zone is None or value is None:
+        return jsonify({"error": "zone and value are required"}), 400
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return jsonify({"error": "value must be a number"}), 400
+
+    conn = init_db(DB_PATH)
+    log_reading(conn, zone, value, sensor=sensor, source=data.get("source", "agent"))
+    conn.close()
+    return jsonify({"ok": True, "zone": zone, "sensor": sensor, "value": value}), 201
+
+
+@app.route("/api/readings")
+def api_readings():
+    """Recent sensor readings (optionally filtered by ?zone=)."""
+    zone = request.args.get("zone")
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    if zone:
+        rows = conn.execute(
+            "SELECT * FROM sensor_readings WHERE zone = ? ORDER BY id DESC LIMIT 50",
+            (zone,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM sensor_readings ORDER BY id DESC LIMIT 50"
+        ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+def get_latest_readings():
+    """Latest moisture reading per zone, for the dashboard."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        """
+        SELECT zone, value, timestamp FROM sensor_readings r
+        WHERE sensor = 'moisture' AND id = (
+            SELECT MAX(id) FROM sensor_readings
+            WHERE zone = r.zone AND sensor = 'moisture'
+        )
+        ORDER BY zone
+        """
+    ).fetchall()
+    conn.close()
+    return rows
 
 
 @app.route("/check", methods=["POST"])
@@ -616,6 +702,7 @@ def analyze():
         vision_logs=get_vision_logs(),
         last_analysis=result["analysis"],
         default_zone=zone,
+        latest_readings=get_latest_readings(),
     )
 
 

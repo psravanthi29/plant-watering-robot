@@ -10,6 +10,7 @@ flood rather than just run a reservoir dry, so every watering run is capped at
 MAX_WATER_SECONDS as a hard safety cutoff (see run_valve()).
 """
 
+import os
 import random
 import sqlite3
 from datetime import datetime
@@ -19,6 +20,16 @@ from scheduler import MAX_WATER_SECONDS, should_water
 SIMULATE = True
 
 DB_PATH = "plant.db"
+
+# Where the watering logic gets its moisture reading from:
+#   "simulate" — random value (default, no hardware)
+#   "db"       — latest reading pushed by a networked sensor agent (see
+#                sensor_agent.py); the server itself never touches GPIO
+#   "gpio"     — read the sensor locally on this machine (Pi with ADC) [future]
+MOISTURE_SOURCE = os.environ.get("MOISTURE_SOURCE", "simulate")
+
+# A pushed reading older than this is treated as stale (sensor offline).
+READING_MAX_AGE_SECONDS = int(os.environ.get("READING_MAX_AGE_SECONDS", "3600"))
 
 STATE_IDLE = "IDLE"
 STATE_CHECKING = "CHECKING"
@@ -42,8 +53,61 @@ def init_db(path=DB_PATH):
         )
         """
     )
+    # Readings pushed over the network by sensor agents (one row per reading).
+    # Additive — independent of the runs/watering log.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS sensor_readings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            zone TEXT NOT NULL,
+            sensor TEXT NOT NULL,
+            value REAL NOT NULL,
+            source TEXT
+        )
+        """
+    )
     conn.commit()
     return conn
+
+
+def log_reading(conn, zone, value, sensor="moisture", source="agent"):
+    """Persist one sensor reading pushed from a networked sensor agent."""
+    conn.execute(
+        "INSERT INTO sensor_readings (timestamp, zone, sensor, value, source) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (datetime.now().isoformat(), zone, sensor, value, source),
+    )
+    conn.commit()
+
+
+def latest_reading(zone, sensor="moisture", max_age_seconds=READING_MAX_AGE_SECONDS,
+                   conn=None):
+    """Most recent pushed reading for a zone, or None if missing/stale.
+
+    Staleness guards against acting on a reading from a sensor that has gone
+    offline — a stale reading is treated the same as no reading.
+    """
+    own = conn is None
+    if own:
+        conn = sqlite3.connect(DB_PATH)
+    try:
+        row = conn.execute(
+            "SELECT value, timestamp FROM sensor_readings "
+            "WHERE zone = ? AND sensor = ? ORDER BY id DESC LIMIT 1",
+            (zone, sensor),
+        ).fetchone()
+    finally:
+        if own:
+            conn.close()
+    if not row:
+        return None
+    value, ts = row
+    if max_age_seconds is not None:
+        age = (datetime.now() - datetime.fromisoformat(ts)).total_seconds()
+        if age > max_age_seconds:
+            return None
+    return value
 
 
 def log_run(conn, zone, moisture, state, action, reason):
@@ -56,7 +120,19 @@ def log_run(conn, zone, moisture, state, action, reason):
 
 
 def read_moisture(zone):
-    """Simulated soil-moisture sensor reading (0-100%)."""
+    """Soil-moisture reading (0-100%) from the configured MOISTURE_SOURCE.
+
+    "db" mode is the networked-sensor path: a sensor agent POSTs readings to
+    the server (see sensor_agent.py + /api/reading), and the watering logic
+    here simply consumes the latest fresh one — the server never reads GPIO.
+    """
+    if MOISTURE_SOURCE == "db":
+        value = latest_reading(zone, sensor="moisture")
+        if value is None:
+            raise RuntimeError(
+                f"no fresh moisture reading for {zone} — sensor agent offline?"
+            )
+        return value
     if SIMULATE:
         return round(random.uniform(10, 60), 1)
     raise NotImplementedError("Real sensor support not wired up yet")
