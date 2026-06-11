@@ -17,6 +17,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 
+import db
 from plant_state import DB_PATH
 
 VISION_MODEL = "gemini-2.5-flash"
@@ -110,13 +111,13 @@ def analyze_images(
     }
 
 
-def init_vision_db(path: str = DB_PATH) -> sqlite3.Connection:
+def init_vision_db(path: str = DB_PATH):
     """Create vision_logs table if it doesn't exist (additive — does not touch runs table)."""
-    conn = sqlite3.connect(path)
+    conn = db.connect(path)
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS vision_logs (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            id          {db.auto_pk(path)},
             timestamp   TEXT NOT NULL,
             zone        TEXT NOT NULL,
             image_count INTEGER,
@@ -126,10 +127,12 @@ def init_vision_db(path: str = DB_PATH) -> sqlite3.Connection:
         )
         """
     )
-    # Migrate older DBs that predate the image_paths column.
-    cols = [r[1] for r in conn.execute("PRAGMA table_info(vision_logs)").fetchall()]
-    if "image_paths" not in cols:
-        conn.execute("ALTER TABLE vision_logs ADD COLUMN image_paths TEXT")
+    # Migrate older SQLite DBs that predate the image_paths column (Postgres DBs
+    # are created with it above, so this PRAGMA-based check is SQLite-only).
+    if not db.USE_PG:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(vision_logs)").fetchall()]
+        if "image_paths" not in cols:
+            conn.execute("ALTER TABLE vision_logs ADD COLUMN image_paths TEXT")
     conn.commit()
     return conn
 

@@ -36,7 +36,7 @@ def test_init_db_creates_runs_table(conn):
 def test_log_run_persists_a_row(conn):
     log_run(conn, "zone-1", 42.0, STATE_DONE, "watered", "soil dry and in window")
     row = conn.execute("SELECT zone, moisture, state, action, reason FROM runs").fetchone()
-    assert row == ("zone-1", 42.0, STATE_DONE, "watered", "soil dry and in window")
+    assert tuple(row) == ("zone-1", 42.0, STATE_DONE, "watered", "soil dry and in window")
 
 
 # --- run_valve safety cutoff ------------------------------------------------

@@ -12,6 +12,7 @@ from flask import (
 
 import os
 
+import db
 from plant_state import DB_PATH, check_and_water, init_db, log_reading
 from vision_analysis import (
     CAPTURES_DIR,
@@ -560,8 +561,7 @@ Check the planner for your next sowing.</div>
 
 
 def get_runs(limit=50):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = db.connect(DB_PATH)
     rows = conn.execute(
         "SELECT * FROM runs ORDER BY id DESC LIMIT ?", (limit,)
     ).fetchall()
@@ -629,8 +629,7 @@ def api_reading():
 def api_readings():
     """Recent sensor readings (optionally filtered by ?zone=)."""
     zone = request.args.get("zone")
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = db.connect(DB_PATH)
     if zone:
         rows = conn.execute(
             "SELECT * FROM sensor_readings WHERE zone = ? ORDER BY id DESC LIMIT 50",
@@ -646,8 +645,7 @@ def api_readings():
 
 def get_latest_readings():
     """Latest moisture reading per zone, for the dashboard."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = db.connect(DB_PATH)
     rows = conn.execute(
         """
         SELECT zone, value, timestamp FROM sensor_readings r

@@ -15,6 +15,7 @@ import random
 import sqlite3
 from datetime import datetime
 
+import db
 from scheduler import MAX_WATER_SECONDS, should_water
 
 SIMULATE = True
@@ -39,11 +40,11 @@ STATE_ERROR = "ERROR"
 
 
 def init_db(path=DB_PATH):
-    conn = sqlite3.connect(path)
+    conn = db.connect(path)
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS runs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {db.auto_pk(path)},
             timestamp TEXT NOT NULL,
             zone TEXT NOT NULL,
             moisture REAL,
@@ -56,9 +57,9 @@ def init_db(path=DB_PATH):
     # Readings pushed over the network by sensor agents (one row per reading).
     # Additive — independent of the runs/watering log.
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS sensor_readings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {db.auto_pk(path)},
             timestamp TEXT NOT NULL,
             zone TEXT NOT NULL,
             sensor TEXT NOT NULL,
@@ -90,7 +91,7 @@ def latest_reading(zone, sensor="moisture", max_age_seconds=READING_MAX_AGE_SECO
     """
     own = conn is None
     if own:
-        conn = sqlite3.connect(DB_PATH)
+        conn = db.connect(DB_PATH)
     try:
         row = conn.execute(
             "SELECT value, timestamp FROM sensor_readings "

@@ -20,6 +20,7 @@ import math
 import sqlite3
 from datetime import date, datetime, timedelta
 
+import db
 from plant_state import DB_PATH
 
 DEFAULT_HOUSEHOLD_SIZE = 10
@@ -231,8 +232,8 @@ def upcoming_sowings(crops_with_plans: list, start_date: date,
 # Persistence (additive tables in plant.db)                                    #
 # --------------------------------------------------------------------------- #
 
-def init_planner_db(path: str = DB_PATH) -> sqlite3.Connection:
-    conn = sqlite3.connect(path)
+def init_planner_db(path: str = DB_PATH):
+    conn = db.connect(path)
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS garden_settings (
@@ -242,9 +243,9 @@ def init_planner_db(path: str = DB_PATH) -> sqlite3.Connection:
         """
     )
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS garden_tasks (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            id          {db.auto_pk(path)},
             crop_row_id INTEGER NOT NULL,
             crop_key    TEXT,
             display     TEXT NOT NULL,
@@ -257,9 +258,9 @@ def init_planner_db(path: str = DB_PATH) -> sqlite3.Connection:
         """
     )
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS garden_crops (
-            id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+            id                       {db.auto_pk(path)},
             key                      TEXT,
             display                  TEXT NOT NULL,
             category                 TEXT,
@@ -363,9 +364,11 @@ def sync_tasks(conn: sqlite3.Connection, crops_with_plans: list,
             if not (start_date <= ev["sow_date"] <= cutoff):
                 continue
             conn.execute(
-                "INSERT OR IGNORE INTO garden_tasks "
-                "(crop_row_id, crop_key, display, sow_date, batch_size) "
-                "VALUES (?, ?, ?, ?, ?)",
+                db.insert_or_ignore(
+                    "garden_tasks",
+                    ["crop_row_id", "crop_key", "display", "sow_date", "batch_size"],
+                    ["crop_row_id", "sow_date"],
+                ),
                 (crop["id"], crop.get("key"), crop["display"],
                  ev["sow_date"].isoformat(), ev["batch_size"]),
             )
