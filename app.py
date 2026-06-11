@@ -968,10 +968,18 @@ def redirect_to_planner():
     return redirect("/planner")
 
 
-if __name__ == "__main__":
+def _ensure_schema():
+    """Create all tables at startup. Runs at import so it also works under a
+    WSGI server like gunicorn (which never executes __main__)."""
     init_db().close()
     init_vision_db().close()
     init_planner_db().close()
-    # host="0.0.0.0" makes the server reachable from other devices on the same WiFi.
-    # Use http://<your-machine-ip>:5000 on your phone.
-    app.run(host="0.0.0.0", port=5000, debug=True)
+
+
+_ensure_schema()
+
+
+if __name__ == "__main__":
+    # Local dev. host=0.0.0.0 makes it reachable from other devices on the LAN.
+    # In the cloud (Render) gunicorn serves app:app and binds $PORT instead.
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)

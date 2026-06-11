@@ -1,0 +1,18 @@
+# Render deployment config for the Plant Watering app.
+# Render reads this when you create a "Blueprint" from the GitHub repo.
+# Secrets (DATABASE_URL, GOOGLE_API_KEY, SENSOR_API_TOKEN) are set in the Render
+# dashboard, NOT here — sync:false keeps them out of the repo.
+services:
+  - type: web
+    name: plant-watering
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DATABASE_URL        # Supabase pooler connection string
+        sync: false
+      - key: GOOGLE_API_KEY      # Gemini vision key
+        sync: false
+      - key: SENSOR_API_TOKEN    # optional: shared secret for /api/reading
+        sync: false
