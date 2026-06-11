@@ -6,3 +6,6 @@ plant.db
 .env
 captures/
 graphify-out/cache/
+
+# Word temp/lock files
+~$*
