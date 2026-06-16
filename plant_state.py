@@ -151,6 +151,27 @@ def run_valve(zone, seconds=MAX_WATER_SECONDS):
     raise NotImplementedError("Real valve/relay support not wired up yet")
 
 
+def zone_moisture_target(zone, conn):
+    """Per-zone moisture threshold from the zones table, or None.
+
+    Prefers an explicit ``moisture_target`` override, else derives it from the
+    crops planted in the zone (placement.zone_recommended_target). Returns None
+    when zones aren't set up (table missing / unknown zone) so the caller falls
+    back to the global default threshold — keeps existing single-zone behavior.
+    """
+    try:
+        import zones as _zones
+        import placement as _placement
+        z = _zones.get_zone_by_sensor_key(conn, zone)
+        if not z:
+            return None
+        if z.get("moisture_target") is not None:
+            return z["moisture_target"]
+        return _placement.zone_recommended_target(conn, z["id"])
+    except Exception:
+        return None
+
+
 def check_and_water(zone="zone-1", conn=None, now=None):
     """One pass of the CHECKING -> (WATERING) -> DONE state machine for a zone."""
     own_conn = conn is None
@@ -167,7 +188,11 @@ def check_and_water(zone="zone-1", conn=None, now=None):
             conn.close()
         return STATE_ERROR
 
-    decision, reason = should_water(moisture, now)
+    target = zone_moisture_target(zone, conn)
+    if target is not None:
+        decision, reason = should_water(moisture, now, threshold=target)
+    else:
+        decision, reason = should_water(moisture, now)
 
     if decision:
         state = STATE_WATERING

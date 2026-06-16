@@ -9,11 +9,14 @@ load_dotenv()  # loads GOOGLE_API_KEY (and others) from .env if present
 from flask import (
     Flask, jsonify, redirect, render_template_string, request, send_from_directory,
 )
+from flask_cors import CORS
 
 import os
 
 import db
 from plant_state import DB_PATH, check_and_water, init_db, log_reading
+from zones import init_zones_db
+from api import api as api_blueprint
 from vision_analysis import (
     CAPTURES_DIR,
     analyze_images,
@@ -45,6 +48,11 @@ from crop_planner import (
 from crop_care import care_schedule, sowing_params, split_past_upcoming
 
 app = Flask(__name__)
+
+# Allow the Expo app (separate origin) to call the JSON API. Bearer-token auth,
+# no cookies, so a permissive default origin is fine; tighten via CORS_ORIGINS.
+CORS(app, resources={r"/api/*": {"origins": os.environ.get("CORS_ORIGINS", "*")}})
+app.register_blueprint(api_blueprint)
 
 PAGE = """
 <!doctype html>
@@ -974,6 +982,7 @@ def _ensure_schema():
     init_db().close()
     init_vision_db().close()
     init_planner_db().close()
+    init_zones_db().close()
 
 
 _ensure_schema()

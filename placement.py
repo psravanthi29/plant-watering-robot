@@ -66,6 +66,7 @@ def suggest_placement(crops_with_plans: list, zones: list) -> dict:
         ]
         if not candidates:
             unplaced.append({
+                "crop_id": crop.get("id"),
                 "crop_key": crop.get("key"),
                 "display": crop.get("display"),
                 "area_m2": round(area, 2),
@@ -83,6 +84,7 @@ def suggest_placement(crops_with_plans: list, zones: list) -> dict:
         remaining[chosen["id"]] -= area
         committed[chosen["id"]] = need
         assignments.append({
+            "crop_id": crop.get("id"),
             "crop_key": crop.get("key"),
             "display": crop.get("display"),
             "zone_id": chosen["id"],

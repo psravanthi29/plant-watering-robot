@@ -18,10 +18,15 @@ def is_soil_dry(moisture_pct, threshold=MOISTURE_THRESHOLD):
     return moisture_pct < threshold
 
 
-def should_water(moisture_pct, now):
-    """Decide whether to water, and why. Returns (decision: bool, reason: str)."""
+def should_water(moisture_pct, now, threshold=MOISTURE_THRESHOLD):
+    """Decide whether to water, and why. Returns (decision: bool, reason: str).
+
+    ``threshold`` defaults to the global MOISTURE_THRESHOLD but callers pass a
+    per-zone target (derived from the crops planted in that zone) so each zone is
+    kept at the moisture its crops actually want.
+    """
     if not is_within_watering_window(now):
         return False, "outside watering window"
-    if not is_soil_dry(moisture_pct):
+    if not is_soil_dry(moisture_pct, threshold):
         return False, "soil moisture sufficient"
     return True, "soil dry and in window"

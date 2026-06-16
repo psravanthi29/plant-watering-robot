@@ -4,3 +4,5 @@ python-dotenv
 requests
 psycopg[binary]
 gunicorn
+flask-cors
+pyjwt[crypto]

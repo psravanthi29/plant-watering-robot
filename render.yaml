@@ -16,3 +16,9 @@ services:
         sync: false
       - key: SENSOR_API_TOKEN    # optional: shared secret for /api/reading
         sync: false
+      - key: SUPABASE_PROJECT_URL # https://<ref>.supabase.co — verifies /api/* JWTs via JWKS
+        sync: false
+      - key: SUPABASE_JWT_SECRET  # legacy alternative to SUPABASE_PROJECT_URL (HS256 projects)
+        sync: false
+      - key: CORS_ORIGINS         # optional: restrict API origins (default "*")
+        sync: false
