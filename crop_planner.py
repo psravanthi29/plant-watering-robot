@@ -109,11 +109,61 @@ SEED_LIBRARY = {
     "pomegranate":  {"display": "Pomegranate (Danimma)", "category": "fruit", "type": "perennial", "days_to_maturity": 730, "harvest_window_days": 90, "yield_per_plant_kg": 25.0, "spacing_cm": 400, "succession_interval_days": 0, "seed_to_transplant_days": 0, "per_person_weekly_g": 150},
 }
 
+# --------------------------------------------------------------------------- #
+# Water / sun needs — the link to the watering hardware                         #
+# --------------------------------------------------------------------------- #
+# One zone = one moisture sensor + one valve, so every crop in a zone is watered
+# together. Crops are therefore grouped into zones by WATER need (placement.py),
+# and a zone's moisture target is derived from the crops in it (WATER_TARGET).
+# These are coarse, editable defaults — category default + per-crop overrides —
+# rather than another column on all 47 library rows.
+
+WATER_TARGET = {"high": 60.0, "medium": 50.0, "low": 40.0}  # target soil-moisture %
+WATER_RANK = {"low": 0, "medium": 1, "high": 2}
+
+_WATER_NEED_DEFAULT_BY_CATEGORY = {"leafy": "high", "vegetable": "medium", "fruit": "low"}
+_WATER_NEED_OVERRIDE = {
+    # thirsty fruiting/vining vegetables and moisture-loving crops
+    "tomato": "high", "cucumber": "high", "bottle_gourd": "high", "ridge_gourd": "high",
+    "snake_gourd": "high", "bitter_gourd": "high", "ash_gourd": "high", "pumpkin": "high",
+    "dosakaya": "high", "ginger": "high", "colocasia": "high",
+    "banana": "high", "papaya": "high", "malabar_spinach": "high", "mint": "high",
+    # drought-tolerant
+    "chilli": "low", "drumstick": "low", "curry_leaf": "low", "garlic": "low",
+    # in-between
+    "gongura": "medium", "ivy_gourd": "medium", "sweet_potato": "medium",
+}
+
+_SUN_NEED_DEFAULT_BY_CATEGORY = {"leafy": "partial", "vegetable": "full", "fruit": "full"}
+_SUN_NEED_OVERRIDE = {
+    "ginger": "partial", "colocasia": "partial", "mint": "partial", "curry_leaf": "partial",
+}
+
+
+def _default_water_need(key, category) -> str:
+    return _WATER_NEED_OVERRIDE.get(key) or _WATER_NEED_DEFAULT_BY_CATEGORY.get(category, "medium")
+
+
+def _default_sun_need(key, category) -> str:
+    return _SUN_NEED_OVERRIDE.get(key) or _SUN_NEED_DEFAULT_BY_CATEGORY.get(category, "full")
+
+
+def crop_water_need(crop: dict) -> str:
+    """'low' | 'medium' | 'high' — stored value wins, else curated default."""
+    return crop.get("water_need") or _default_water_need(crop.get("key"), crop.get("category"))
+
+
+def crop_sun_need(crop: dict) -> str:
+    """'shade' | 'partial' | 'full' — the crop's minimum acceptable sun."""
+    return crop.get("sun_need") or _default_sun_need(crop.get("key"), crop.get("category"))
+
+
 # Columns persisted per target crop (mirrors a normalized library entry + demand override).
 CROP_FIELDS = [
     "key", "display", "category", "type", "days_to_maturity", "harvest_window_days",
     "yield_per_plant_kg", "spacing_cm", "succession_interval_days",
     "seed_to_transplant_days", "per_person_weekly_g", "weekly_demand_kg",
+    "water_need", "sun_need",
 ]
 
 
@@ -232,8 +282,10 @@ def upcoming_sowings(crops_with_plans: list, start_date: date,
 # Persistence (additive tables in plant.db)                                    #
 # --------------------------------------------------------------------------- #
 
-def init_planner_db(path: str = DB_PATH):
-    conn = db.connect(path)
+def init_planner_db(path: str = DB_PATH, conn: sqlite3.Connection | None = None):
+    own = conn is None
+    if own:
+        conn = db.connect(path)
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS garden_settings (
@@ -272,12 +324,35 @@ def init_planner_db(path: str = DB_PATH):
             succession_interval_days INTEGER,
             seed_to_transplant_days  INTEGER,
             per_person_weekly_g      REAL,
-            weekly_demand_kg         REAL
+            weekly_demand_kg         REAL,
+            water_need               TEXT,
+            sun_need                 TEXT,
+            zone_id                  INTEGER
         )
         """
     )
     conn.commit()
+    # Migrate older databases that predate the integration columns.
+    for col, coldef in (("water_need", "TEXT"), ("sun_need", "TEXT"), ("zone_id", "INTEGER")):
+        _add_column_if_missing(conn, "garden_crops", col, coldef, path)
     return conn
+
+
+def _table_columns(conn, table: str, path: str) -> set:
+    if db._is_pg(path):
+        rows = conn.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = ?",
+            (table,),
+        ).fetchall()
+        return {r[0] for r in rows}
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    return {r[1] for r in rows}
+
+
+def _add_column_if_missing(conn, table: str, column: str, coldef: str, path: str) -> None:
+    if column not in _table_columns(conn, table, path):
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coldef}")
+        conn.commit()
 
 
 def get_setting(conn: sqlite3.Connection, key: str, default=None):
@@ -420,4 +495,25 @@ def crop_from_library(key: str, weekly_demand_kg=None) -> dict:
     lib = SEED_LIBRARY[key]
     crop = {"key": key, **lib}
     crop["weekly_demand_kg"] = weekly_demand_kg
+    crop["water_need"] = _default_water_need(key, lib.get("category"))
+    crop["sun_need"] = _default_sun_need(key, lib.get("category"))
     return crop
+
+
+# --------------------------------------------------------------------------- #
+# Crop ↔ zone assignment (the planner side of the integration)                  #
+# --------------------------------------------------------------------------- #
+
+def assign_crop_zone(conn: sqlite3.Connection, crop_id: int, zone_id) -> None:
+    """Place a crop in a zone (zone_id=None unassigns it)."""
+    conn.execute("UPDATE garden_crops SET zone_id = ? WHERE id = ?", (zone_id, crop_id))
+    conn.commit()
+
+
+def crops_in_zone(conn: sqlite3.Connection, zone_id: int) -> list:
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        "SELECT * FROM garden_crops WHERE zone_id = ? ORDER BY category, display",
+        (zone_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]
