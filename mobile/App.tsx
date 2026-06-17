@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import Login from './components/Login';
-import Dashboard from './components/Dashboard';
+import Main from './components/Main';
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -31,7 +31,7 @@ export default function App() {
 
   return (
     <>
-      {session ? <Dashboard email={session.user.email} /> : <Login />}
+      {session ? <Main email={session.user.email} /> : <Login />}
       <StatusBar style="auto" />
     </>
   );

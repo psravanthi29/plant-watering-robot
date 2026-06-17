@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -10,6 +9,7 @@ import {
 } from 'react-native';
 import { apiFetch } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import Loading from './Loading';
 
 type Zone = {
   id: number;
@@ -103,11 +103,7 @@ export default function Dashboard({ email }: { email?: string }) {
   }
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#3a7d44" />
-      </View>
-    );
+    return <Loading />;
   }
 
   return (
