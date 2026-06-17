@@ -8,7 +8,11 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    # 1 worker keeps memory low on the free tier; 8 threads let slow DB calls run
+    # concurrently so one slow request can't block all others. timeout 120 stops
+    # gunicorn killing a worker mid-request during a slow Supabase connect / cold
+    # start (the default 30s caused a kill-restart death spiral).
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 120
     envVars:
       - key: DATABASE_URL        # Supabase pooler connection string
         sync: false
