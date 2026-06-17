@@ -15,7 +15,10 @@ def client(tmp_path, monkeypatch):
     Force sqlite even if DATABASE_URL is set in the environment, otherwise
     db.connect() would route the file path to live Postgres.
     """
-    monkeypatch.delenv("SUPABASE_JWT_SECRET", raising=False)  # auth disabled
+    # Disable auth: clear every env var auth_enabled() looks at (a local .env may
+    # set any of them; SUPABASE_PROJECT_URL alone is enough to switch auth on).
+    for var in ("SUPABASE_JWT_SECRET", "SUPABASE_PROJECT_URL", "SUPABASE_URL"):
+        monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(db, "USE_PG", False)
     monkeypatch.setattr(db, "DATABASE_URL", None)
     dbfile = str(tmp_path / "t.db")

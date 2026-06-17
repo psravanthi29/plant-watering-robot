@@ -2,7 +2,7 @@ flask
 google-genai
 python-dotenv
 requests
-psycopg[binary]
+psycopg[binary,pool]
 gunicorn
 flask-cors
 pyjwt[crypto]

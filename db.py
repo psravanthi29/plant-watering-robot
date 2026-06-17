@@ -39,6 +39,29 @@ def auto_pk(path=DEFAULT_SQLITE_PATH):
 if USE_PG:
     import psycopg
 
+    # A process-wide pool keeps connections warm. Without it, every request paid a
+    # fresh Postgres connection handshake to Supabase (~2s, TLS+auth, cross-region),
+    # which made every data-loading click slow. max_size matches gunicorn --threads.
+    # check= validates a connection before handing it out, so a connection Supabase
+    # closed while idle is transparently replaced instead of erroring a request.
+    # psycopg_pool is imported lazily here so db.py still imports in SQLite/test
+    # contexts (and CI) where the pool dependency isn't installed.
+    _pool = None
+
+    def _get_pool():
+        global _pool
+        if _pool is None:
+            from psycopg_pool import ConnectionPool
+            _pool = ConnectionPool(
+                DATABASE_URL,
+                min_size=1,
+                max_size=8,
+                max_idle=120,
+                check=ConnectionPool.check_connection,
+                open=True,
+            )
+        return _pool
+
     class _HybridRow:
         """Supports row[0], row['col'] and dict(row) — matches sqlite3.Row."""
         __slots__ = ("_names", "_values", "_map")
@@ -68,10 +91,15 @@ if USE_PG:
         return lambda values: _HybridRow(names, values)
 
     class _PgConnection:
-        """Adapter exposing the slice of the sqlite3 Connection API our code uses."""
+        """Adapter exposing the slice of the sqlite3 Connection API our code uses.
 
-        def __init__(self, raw):
+        Wraps a connection borrowed from the pool; close() returns it to the pool
+        (rolling back any uncommitted state first) rather than tearing it down.
+        """
+
+        def __init__(self, raw, pool):
             self._raw = raw
+            self._pool = pool
             self.row_factory = None  # accepted for sqlite-compat, ignored
 
         def execute(self, sql, params=()):
@@ -86,16 +114,30 @@ if USE_PG:
             self._raw.commit()
 
         def close(self):
+            if self._raw is None:
+                return
             try:
-                self._raw.close()
+                self._raw.rollback()  # discard anything uncommitted before reuse
             except Exception:
                 pass
+            try:
+                self._pool.putconn(self._raw)
+            except Exception:
+                # If returning fails, close it so the pool can open a fresh one.
+                try:
+                    self._raw.close()
+                except Exception:
+                    pass
+            self._raw = None
 
         def __enter__(self):
             return self
 
         def __exit__(self, exc_type, exc, tb):
-            self._raw.commit() if exc_type is None else self._raw.rollback()
+            try:
+                self._raw.commit() if exc_type is None else self._raw.rollback()
+            finally:
+                self.close()
             return False
 
 
@@ -105,7 +147,8 @@ def connect(path=DEFAULT_SQLITE_PATH):
         conn = sqlite3.connect(path or DEFAULT_SQLITE_PATH)
         conn.row_factory = sqlite3.Row
         return conn
-    return _PgConnection(psycopg.connect(DATABASE_URL))
+    pool = _get_pool()
+    return _PgConnection(pool.getconn(), pool)
 
 
 def insert_or_ignore(table, columns, conflict_columns):
