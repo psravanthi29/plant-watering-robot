@@ -42,8 +42,11 @@ if USE_PG:
     # A process-wide pool keeps connections warm. Without it, every request paid a
     # fresh Postgres connection handshake to Supabase (~2s, TLS+auth, cross-region),
     # which made every data-loading click slow. max_size matches gunicorn --threads.
-    # check= validates a connection before handing it out, so a connection Supabase
-    # closed while idle is transparently replaced instead of erroring a request.
+    #
+    # We deliberately do NOT pass check= : a liveness SELECT 1 on every getconn adds
+    # a full cross-region round-trip (~0.5s here) to every request. Instead we let
+    # connections recycle (max_lifetime) and reset cleanly on return; a rare stale
+    # connection surfaces as one failed request the client simply retries.
     # psycopg_pool is imported lazily here so db.py still imports in SQLite/test
     # contexts (and CI) where the pool dependency isn't installed.
     _pool = None
@@ -57,7 +60,7 @@ if USE_PG:
                 min_size=1,
                 max_size=8,
                 max_idle=120,
-                check=ConnectionPool.check_connection,
+                max_lifetime=600,   # recycle conns before Supabase drops idle ones
                 open=True,
             )
         return _pool
