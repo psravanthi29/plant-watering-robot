@@ -1,0 +1,25 @@
+name: keep-alive
+
+# Render's free tier sleeps after ~15 min idle and a cold start can take ~1-2 min.
+# This pings the site every ~10 min so it stays warm during the day. (GitHub may
+# delay scheduled runs under load, so 10 min gives a buffer under the 15-min sleep.)
+# Note: scheduled workflows run only on the default branch, and GitHub auto-disables
+# the schedule after 60 days with no repo activity — re-enable it from the Actions tab.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}   # allow a manual ping from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the site to keep Render awake
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 180 https://thotamaali.com/)
+          echo "thotamaali.com responded with HTTP $code"
+          # Treat any HTTP response as success (the goal is just to wake the server).
+          if [ -z "$code" ] || [ "$code" = "000" ]; then
+            echo "No response from server"; exit 1
+          fi
