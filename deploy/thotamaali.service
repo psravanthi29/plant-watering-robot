@@ -1,0 +1,15 @@
+[Unit]
+Description=thotamaali plant-watering Flask app (gunicorn)
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/plant-watering-robot
+# load_dotenv() in the app reads ./.env from WorkingDirectory for secrets
+ExecStart=/home/ubuntu/plant-watering-robot/.venv/bin/gunicorn app:app \
+    --bind 127.0.0.1:8000 --workers 1 --threads 8 --timeout 120
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
