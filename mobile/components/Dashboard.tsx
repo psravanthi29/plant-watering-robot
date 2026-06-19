@@ -20,7 +20,16 @@ type Zone = {
   crops: string[];
 };
 
-type Reading = { zone: string; value: number; timestamp: string };
+type Reading = { zone: string; value: number; timestamp: string; sensor?: string };
+type Run = {
+  id: number;
+  timestamp: string;
+  zone: string;
+  moisture: number | null;
+  state: string;
+  action: string | null;
+  reason: string | null;
+};
 
 // The Render free tier sleeps when idle; the first call while it wakes can fail
 // at the network level ("Failed to fetch"). Turn that into a helpful message.
@@ -36,17 +45,23 @@ function friendlyError(err: any): string {
 export default function Dashboard({ email }: { email?: string }) {
   const [zones, setZones] = useState<Zone[]>([]);
   const [latest, setLatest] = useState<Record<string, Reading>>({});
+  const [readings, setReadings] = useState<Reading[]>([]);
+  const [runs, setRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Per-zone "watering now" status keyed by the zone's sensor_key.
+  const [watering, setWatering] = useState<Record<string, boolean>>({});
+  const [waterMsg, setWaterMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     // Load each endpoint independently so one slow/cold call can't blank the
-    // whole screen. Zones are the primary data; readings are best-effort.
-    const [zoneRes, readingRes] = await Promise.allSettled([
+    // whole screen. Zones are the primary data; the rest are best-effort.
+    const [zoneRes, readingRes, runRes] = await Promise.allSettled([
       apiFetch<Zone[]>('/api/zones'),
       apiFetch<Reading[]>('/api/readings'),
+      apiFetch<Run[]>('/api/runs'),
     ]);
 
     if (zoneRes.status === 'fulfilled') {
@@ -56,10 +71,13 @@ export default function Dashboard({ email }: { email?: string }) {
     }
 
     if (readingRes.status === 'fulfilled') {
+      setReadings(readingRes.value);
       const byZone: Record<string, Reading> = {};
       for (const r of readingRes.value) if (!byZone[r.zone]) byZone[r.zone] = r;
       setLatest(byZone);
     }
+
+    if (runRes.status === 'fulfilled') setRuns(runRes.value);
 
     setLoading(false);
     setRefreshing(false);
@@ -68,6 +86,23 @@ export default function Dashboard({ email }: { email?: string }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function waterNow(zoneKey: string, zoneName: string) {
+    setWatering((w) => ({ ...w, [zoneKey]: true }));
+    setWaterMsg(null);
+    try {
+      const res = await apiFetch<{ zone: string; state: string }>('/api/check', {
+        method: 'POST',
+        body: JSON.stringify({ zone: zoneKey }),
+      });
+      setWaterMsg(`${zoneName}: ${res.state.toLowerCase()}`);
+      await load();
+    } catch (e) {
+      setWaterMsg(friendlyError(e));
+    } finally {
+      setWatering((w) => ({ ...w, [zoneKey]: false }));
+    }
+  }
 
   function renderZone({ item }: { item: Zone }) {
     const reading = item.sensor_key ? latest[item.sensor_key] : undefined;
@@ -98,6 +133,63 @@ export default function Dashboard({ email }: { email?: string }) {
         <Text style={styles.crops}>
           {item.crops.length ? item.crops.join(', ') : 'No crops assigned'}
         </Text>
+
+        {item.sensor_key ? (
+          <TouchableOpacity
+            style={styles.waterBtn}
+            onPress={() => waterNow(item.sensor_key!, item.name)}
+            disabled={watering[item.sensor_key]}
+          >
+            <Text style={styles.waterBtnText}>
+              {watering[item.sensor_key] ? 'Checking…' : '💧 Water now'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    );
+  }
+
+  function Footer() {
+    return (
+      <View>
+        {/* Watering history */}
+        <Text style={styles.sectionHeader}>Watering history</Text>
+        {runs.length === 0 ? (
+          <Text style={styles.footerEmpty}>No watering runs logged yet.</Text>
+        ) : (
+          runs.slice(0, 15).map((r) => (
+            <View key={r.id} style={styles.logRow}>
+              <Text style={styles.logWhen}>{r.timestamp.slice(5, 16).replace('T', ' ')}</Text>
+              <Text style={styles.logMain}>
+                <Text style={styles.bold}>{r.zone}</Text> · {r.action || r.state}
+                {r.moisture != null ? ` · ${Number(r.moisture).toFixed(0)}%` : ''}
+              </Text>
+              {r.reason ? <Text style={styles.logReason}>{r.reason}</Text> : null}
+            </View>
+          ))
+        )}
+
+        {/* Raw sensor readings feed — includes zones not yet configured */}
+        <Text style={styles.sectionHeader}>Sensor readings</Text>
+        {readings.length === 0 ? (
+          <Text style={styles.footerEmpty}>
+            No readings yet. A sensor agent pushes them to the server.
+          </Text>
+        ) : (
+          readings.slice(0, 15).map((r, i) => {
+            const known = zones.some((z) => z.sensor_key === r.zone);
+            return (
+              <View key={i} style={styles.logRow}>
+                <Text style={styles.logWhen}>{r.timestamp.slice(5, 16).replace('T', ' ')}</Text>
+                <Text style={styles.logMain}>
+                  <Text style={styles.bold}>{r.zone}</Text>
+                  {!known ? <Text style={styles.unconfigured}>  · not configured</Text> : null}
+                  {' · '}{Number(r.value).toFixed(0)}%
+                </Text>
+              </View>
+            );
+          })
+        )}
       </View>
     );
   }
@@ -133,10 +225,17 @@ export default function Dashboard({ email }: { email?: string }) {
         </View>
       ) : null}
 
+      {waterMsg ? (
+        <TouchableOpacity style={styles.waterMsg} onPress={() => setWaterMsg(null)}>
+          <Text style={styles.waterMsgText}>💧 {waterMsg}</Text>
+        </TouchableOpacity>
+      ) : null}
+
       <FlatList
         data={zones}
         keyExtractor={(z) => String(z.id)}
         renderItem={renderZone}
+        ListFooterComponent={Footer}
         contentContainerStyle={{ padding: 14 }}
         refreshControl={
           <RefreshControl
@@ -188,4 +287,19 @@ const styles = StyleSheet.create({
   target: { fontSize: 13, color: '#888' },
   crops: { fontSize: 13, color: '#555' },
   empty: { textAlign: 'center', color: '#999', padding: 30, lineHeight: 20 },
+  waterBtn: {
+    marginTop: 12, backgroundColor: '#eaf2fb', borderWidth: 1, borderColor: '#cfe0f2',
+    borderRadius: 8, paddingVertical: 9, alignItems: 'center',
+  },
+  waterBtnText: { color: '#1a6faf', fontWeight: '700', fontSize: 14 },
+  waterMsg: { backgroundColor: '#eef5ee', marginHorizontal: 12, marginTop: 10, padding: 10, borderRadius: 8 },
+  waterMsgText: { color: '#2f6b3a', fontSize: 13, fontWeight: '600' },
+  sectionHeader: { fontSize: 15, fontWeight: '800', color: '#444', marginTop: 22, marginBottom: 8 },
+  footerEmpty: { color: '#999', fontSize: 13, lineHeight: 19, paddingVertical: 6 },
+  logRow: { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  logWhen: { fontSize: 11, color: '#999' },
+  logMain: { fontSize: 13, color: '#444', marginTop: 1 },
+  logReason: { fontSize: 12, color: '#888', marginTop: 1 },
+  bold: { fontWeight: '700', color: '#222' },
+  unconfigured: { color: '#b36200', fontSize: 12 },
 });

@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
+import VerifyEmail from './VerifyEmail';
 
 type Notice = { kind: 'info' | 'error'; text: string } | null;
 
@@ -25,21 +26,17 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
-  // Set when an account exists but its email isn't confirmed yet → show resend.
-  const [unconfirmed, setUnconfirmed] = useState<string | null>(null);
+  // When set, an account exists but its email isn't confirmed → take over the
+  // whole screen with a dedicated "check your email" step (see VerifyEmail).
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
   async function signIn() {
     setLoading(true);
     setNotice(null);
-    setUnconfirmed(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       if (isUnconfirmed(error)) {
-        setUnconfirmed(email);
-        setNotice({
-          kind: 'info',
-          text: `Your email isn't confirmed yet. Check ${email} (and spam) for the link, then sign in.`,
-        });
+        setPendingEmail(email);
       } else {
         setNotice({ kind: 'error', text: error.message });
       }
@@ -50,32 +47,20 @@ export default function Login() {
   async function signUp() {
     setLoading(true);
     setNotice(null);
-    setUnconfirmed(null);
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
       setNotice({ kind: 'error', text: error.message });
     } else if (!data.session) {
-      // No session means Supabase requires email confirmation first.
-      setUnconfirmed(email);
-      setNotice({
-        kind: 'info',
-        text: `We sent a confirmation link to ${email}. Tap it, then come back and sign in.`,
-      });
+      // No session means Supabase requires email confirmation first → show the
+      // dedicated verify-your-email screen so the step can't be missed.
+      setPendingEmail(email);
     }
     // If a session WAS returned, App.tsx's auth listener navigates automatically.
     setLoading(false);
   }
 
-  async function resend() {
-    if (!unconfirmed) return;
-    setLoading(true);
-    const { error } = await supabase.auth.resend({ type: 'signup', email: unconfirmed });
-    setNotice(
-      error
-        ? { kind: 'error', text: error.message }
-        : { kind: 'info', text: `Confirmation link re-sent to ${unconfirmed}.` }
-    );
-    setLoading(false);
+  if (pendingEmail) {
+    return <VerifyEmail email={pendingEmail} onBack={() => setPendingEmail(null)} />;
   }
 
   return (
@@ -115,11 +100,6 @@ export default function Login() {
             {notice.kind === 'info' ? '✉️  ' : '⚠️  '}
             {notice.text}
           </Text>
-          {unconfirmed ? (
-            <TouchableOpacity onPress={resend} disabled={loading}>
-              <Text style={styles.resend}>Resend confirmation email</Text>
-            </TouchableOpacity>
-          ) : null}
         </View>
       ) : null}
 
@@ -151,7 +131,6 @@ const styles = StyleSheet.create({
   noticeError: { backgroundColor: '#fdecea', borderWidth: 1, borderColor: '#f5c6c0' },
   noticeInfoText: { color: '#2f6b3a', fontSize: 13, lineHeight: 18 },
   noticeErrorText: { color: '#c0392b', fontSize: 13, lineHeight: 18 },
-  resend: { color: '#1a6faf', fontWeight: '700', marginTop: 8, fontSize: 13 },
   btn: {
     backgroundColor: '#3a7d44', borderRadius: 10, padding: 15,
     alignItems: 'center', marginTop: 4,

@@ -5,6 +5,7 @@ import db
 import plant_state
 from api import api as api_blueprint
 from crop_planner import init_planner_db
+from plant_state import init_db
 from zones import init_zones_db
 
 
@@ -23,6 +24,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "DATABASE_URL", None)
     dbfile = str(tmp_path / "t.db")
     monkeypatch.setattr(plant_state, "DB_PATH", dbfile)
+    init_db(dbfile).close()          # runs + sensor_readings tables
     init_planner_db(dbfile).close()
     init_zones_db(dbfile).close()
     app = Flask(__name__)
@@ -90,3 +92,63 @@ def test_manual_zone_assignment(client):
     assert client.post(f"/api/crops/{crop_id}/zone", json={"zone_id": zid}).status_code == 200
     bed = client.get(f"/api/zones/{zid}").get_json()
     assert any(c["display"].startswith("Spinach") for c in bed["crops"])
+
+
+def test_watering_check_logs_a_run(client):
+    r = client.post("/api/check", json={"zone": "zone-1"})
+    assert r.status_code == 200
+    assert r.get_json()["zone"] == "zone-1"
+    assert r.get_json()["state"]  # some terminal state string
+
+    runs = client.get("/api/runs").get_json()
+    assert len(runs) >= 1
+    assert runs[0]["zone"] == "zone-1"
+
+
+def test_readings_feed_returns_list(client):
+    # Empty to start; a logged reading then shows up (incl. unconfigured zones).
+    assert client.get("/api/readings").get_json() == []
+    conn = db.connect(plant_state.DB_PATH)
+    plant_state.log_reading(conn, "wild-zone", 42.0)
+    conn.close()
+    feed = client.get("/api/readings").get_json()
+    assert any(row["zone"] == "wild-zone" and row["value"] == 42.0 for row in feed)
+
+
+def test_planner_settings_roundtrip(client):
+    before = client.get("/api/planner/settings").get_json()
+    assert "household_size" in before and "plan_start_date" in before
+
+    assert client.post("/api/planner/settings",
+                       json={"household_size": 12}).status_code == 200
+    assert client.get("/api/planner/settings").get_json()["household_size"] == 12
+
+
+def test_set_crop_demand_override(client):
+    client.post("/api/crops", json={"library_key": "tomato"})
+    crop_id = client.get("/api/crops").get_json()[0]["id"]
+
+    assert client.post(f"/api/crops/{crop_id}/demand",
+                       json={"weekly_demand_kg": 3.5}).status_code == 200
+    crop = client.get("/api/crops").get_json()[0]
+    assert crop["demand_auto"] is False
+
+    # Blank reverts to auto.
+    client.post(f"/api/crops/{crop_id}/demand", json={"weekly_demand_kg": None})
+    assert client.get("/api/crops").get_json()[0]["demand_auto"] is True
+
+
+def test_tasks_materialize_and_care_plan(client):
+    client.post("/api/crops", json={"library_key": "tomato"})
+    tasks = client.get("/api/tasks").get_json()
+    assert tasks, "adding a crop + listing tasks should materialize sow tasks"
+
+    care = client.get(f"/api/care/{tasks[0]['id']}").get_json()
+    assert care["task"]["display"]
+    # A care schedule always has a day-0 'Sown' event among past/upcoming.
+    titles = [e["title"] for e in care["past"] + care["upcoming"]]
+    assert any("Sown" in t for t in titles)
+
+
+def test_care_404_for_unknown_task(client):
+    assert client.get("/api/care/99999").status_code == 404

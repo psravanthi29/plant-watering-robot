@@ -13,9 +13,46 @@ Lessons learned here (wiring sensors/actuators, scheduler/gating logic,
 simulate-then-deploy workflow) are meant to carry over directly.
 
 ## Current build stage
-Stage 0: planning / software-first. No hardware purchased yet.
-Plan is to build and fully validate the control logic in SIMULATE mode before
-wiring any real components — same philosophy as the Solar project.
+Software is well past Stage 0. The control logic, Flask API, garden planner, and
+vision features are built and deployed to the cloud; the frontend is being rebuilt
+as an Expo app; some hardware is wired. See **"Where we are now"** below for the
+live snapshot and **"Resume here (next session)"** for the immediate open decision.
+
+## Where we are now (18 June 2026)
+A fast-moving snapshot for whoever picks this up next. Memory files in `MEMORY.md`
+hold the detail; verify against current code before treating any of this as fact.
+
+- **Backend (built, deployed):** Flask + `db.py` (SQLite local / Supabase Postgres in
+  cloud) on **Render free tier**, domain **thotamaali.com** (Cloudflare → Render).
+  JSON API under `/api/*` with Supabase-JWT auth. 72 tests pass. Every push to `main`
+  auto-redeploys Render.
+- **Zone integration (Phases 1–2 built):** first-class `zones` table bridges the garden
+  planner and the watering hardware; `placement.py` auto-suggests crop→zone grouping by
+  water need. See `memory/zone-integration.md`.
+- **Frontend rebuild (Phases 3–4 built, in `mobile/`):** Expo (React Native + web, one
+  codebase). Login + Garden dashboard + Setup (zones CRUD) + Planner (crops, auto-placement,
+  override). Typecheck-clean; **not yet verified live** (blocked by server latency below).
+  Phases 5–6 pending: auth polish, then Flask serves the Expo web build so thotamaali.com
+  *becomes* this app (web == mobile, one codebase) and the old HTML pages retire.
+- **Hardware:** ESP32 + capacitive moisture sensor wired & calibrated (DRY≈2620/WET≈930,
+  GPIO34), relay + 12V valve electronics done, firmware POSTs readings to the cloud.
+  Paused pending female spade connectors (valve) + plumbing. See `memory/networked-sensor.md`.
+
+## Resume here (next session)
+**Cloud hosting is SOLVED (18 June 2026).** Migrated Render → **AWS EC2 t4g.micro in
+ap-south-1 (Mumbai)**, co-located with the Supabase project → DB latency **~2.2s → ~7ms**.
+`https://thotamaali.com` now serves from the EC2 box (Elastic IP `65.2.199.137`, nginx +
+gunicorn, Let's Encrypt TLS). Deploy = SSH to box + `bash deploy/deploy.sh`. Full detail
+in `memory/deployment-hosting.md` and `deploy/README.md`.
+
+**Immediate next steps:**
+1. ✅ DONE — Expo app verified end-to-end against the fast backend (Setup zones, Planner
+   crops + placement).
+2. ✅ DONE — Render service suspended/deleted; keep-alive GitHub Action disabled; `deploy.sh`
+   run to pick up the restored DB liveness check.
+3. **IN PROGRESS — resume the frontend roadmap:** Phase 5 (auth polish), Phase 6 (Flask serves
+   the Expo web build so thotamaali.com *becomes* the app, retiring the old HTML pages) — the
+   "web == mobile, one codebase" cutover. See `memory/zone-integration.md`.
 
 ## The idea (starting scope — refine as we go)
 - One or more potted plants / a small grow-shelf

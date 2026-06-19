@@ -7,6 +7,13 @@
       "runtimeArgs": ["app.py"],
       "port": 5000,
       "autoPort": false
+    },
+    {
+      "name": "Expo Web (mobile)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "mobile", "run", "web", "--", "--port", "8082"],
+      "port": 8082,
+      "autoPort": false
     }
   ]
 }

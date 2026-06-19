@@ -596,11 +596,6 @@ def dashboard():
     )
 
 
-@app.route("/api/runs")
-def api_runs():
-    return jsonify([dict(r) for r in get_runs()])
-
-
 SENSOR_API_TOKEN = os.environ.get("SENSOR_API_TOKEN")  # set in .env for real deployments
 
 
@@ -631,24 +626,6 @@ def api_reading():
     log_reading(conn, zone, value, sensor=sensor, source=data.get("source", "agent"))
     conn.close()
     return jsonify({"ok": True, "zone": zone, "sensor": sensor, "value": value}), 201
-
-
-@app.route("/api/readings")
-def api_readings():
-    """Recent sensor readings (optionally filtered by ?zone=)."""
-    zone = request.args.get("zone")
-    conn = db.connect(DB_PATH)
-    if zone:
-        rows = conn.execute(
-            "SELECT * FROM sensor_readings WHERE zone = ? ORDER BY id DESC LIMIT 50",
-            (zone,),
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            "SELECT * FROM sensor_readings ORDER BY id DESC LIMIT 50"
-        ).fetchall()
-    conn.close()
-    return jsonify([dict(r) for r in rows])
 
 
 def get_latest_readings():
@@ -752,17 +729,6 @@ def progress():
         TIMELINE_PAGE, zone=zone, sessions=list(reversed(sessions)),
         progress=progress_text
     )
-
-
-@app.route("/api/vision-logs")
-def api_vision_logs():
-    conn = init_vision_db(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        "SELECT * FROM vision_logs ORDER BY id DESC LIMIT 50"
-    ).fetchall()
-    conn.close()
-    return jsonify([dict(r) for r in rows])
 
 
 # --------------------------------------------------------------------------- #

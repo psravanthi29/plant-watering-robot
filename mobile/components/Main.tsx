@@ -3,13 +3,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Dashboard from './Dashboard';
 import Setup from './Setup';
 import Planner from './Planner';
+import Health from './Health';
 
-type Tab = 'garden' | 'setup' | 'planner';
+type Tab = 'garden' | 'setup' | 'planner' | 'health';
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'garden', label: 'Garden', icon: '🌱' },
   { key: 'setup', label: 'Setup', icon: '🪴' },
   { key: 'planner', label: 'Planner', icon: '📋' },
+  { key: 'health', label: 'Health', icon: '📷' },
 ];
 
 // Lightweight state-based tab shell — no navigation lib needed, identical on web
@@ -24,6 +26,7 @@ export default function Main({ email }: { email?: string }) {
         {tab === 'garden' && <Dashboard email={email} />}
         {tab === 'setup' && <Setup />}
         {tab === 'planner' && <Planner />}
+        {tab === 'health' && <Health />}
       </View>
 
       <View style={styles.tabbar}>

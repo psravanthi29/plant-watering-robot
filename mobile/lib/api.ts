@@ -2,7 +2,16 @@
 // Flask API can verify the caller. Base URL is the deployed host by default.
 import { supabase } from './supabase';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://thotamaali.com';
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://thotamaali.com';
+
+// Stored capture paths look like "captures/<zone>/<stamp>/0.jpg"; the server
+// serves them at /captures/<relpath>. Build a loadable image URL from one.
+export function captureUrl(storedPath: string): string {
+  const rel = storedPath.includes('captures/')
+    ? storedPath.split('captures/')[1]
+    : storedPath;
+  return `${API_URL}/captures/${rel}`;
+}
 
 // The Render free tier sleeps when idle; a cold start has been measured at up to
 // ~130s. We allow 150s so the first call can still succeed through a wake-up, but
