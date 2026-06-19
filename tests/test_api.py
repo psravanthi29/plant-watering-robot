@@ -7,6 +7,7 @@ from api import api as api_blueprint
 from crop_planner import init_planner_db
 from plant_state import init_db
 from zones import init_zones_db
+from garden_layout import init_layout_db
 
 
 @pytest.fixture
@@ -27,6 +28,7 @@ def client(tmp_path, monkeypatch):
     init_db(dbfile).close()          # runs + sensor_readings tables
     init_planner_db(dbfile).close()
     init_zones_db(dbfile).close()
+    init_layout_db(dbfile).close()
     app = Flask(__name__)
     app.register_blueprint(api_blueprint)
     return app.test_client()
@@ -152,3 +154,51 @@ def test_tasks_materialize_and_care_plan(client):
 
 def test_care_404_for_unknown_task(client):
     assert client.get("/api/care/99999").status_code == 404
+
+
+def test_feature_crud_and_area(client):
+    # A 120x60 cm raised bed → 0.72 m².
+    r = client.post("/api/features", json={
+        "name": "Bed A", "template": "raised_bed", "kind": "bed", "shape": "rect",
+        "width_cm": 120, "length_cm": 60, "x_cm": 10, "y_cm": 20, "sun": "full",
+    })
+    assert r.status_code == 201
+    fid = r.get_json()["id"]
+
+    feats = client.get("/api/features").get_json()
+    bed = next(f for f in feats if f["id"] == fid)
+    assert bed["area_m2"] == 0.72
+
+    # Move + resize via PATCH.
+    client.patch(f"/api/features/{fid}", json={"x_cm": 99, "width_cm": 100})
+    bed = next(f for f in client.get("/api/features").get_json() if f["id"] == fid)
+    assert bed["x_cm"] == 99 and bed["area_m2"] == 0.6
+
+    assert client.delete(f"/api/features/{fid}").status_code == 200
+    assert all(f["id"] != fid for f in client.get("/api/features").get_json())
+
+
+def test_feature_rejects_bad_shape(client):
+    assert client.post("/api/features", json={"shape": "blob"}).status_code == 400
+
+
+def test_circle_feature_area(client):
+    # Ø30 cm pot → π*0.15² ≈ 0.071 m².
+    client.post("/api/features", json={
+        "name": "Pot", "kind": "container", "shape": "circle",
+        "width_cm": 30, "length_cm": 30,
+    })
+    pot = client.get("/api/features").get_json()[-1]
+    assert pot["area_m2"] == 0.071
+
+
+def test_deleting_zone_detaches_its_features(client):
+    zid = client.post("/api/zones", json={"name": "Bed Zone"}).get_json()["id"]
+    fid = client.post("/api/features", json={
+        "name": "Bed A", "shape": "rect", "width_cm": 100, "length_cm": 100,
+        "zone_id": zid,
+    }).get_json()["id"]
+
+    client.delete(f"/api/zones/{zid}")
+    bed = next(f for f in client.get("/api/features").get_json() if f["id"] == fid)
+    assert bed["zone_id"] is None  # feature survives, just unzoned

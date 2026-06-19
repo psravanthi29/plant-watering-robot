@@ -18,6 +18,7 @@ import crop_planner as cp
 import crop_care
 import placement as placement_mod
 import zones as zones_mod
+import garden_layout as layout_mod
 from auth import require_auth
 
 api = Blueprint("api", __name__, url_prefix="/api")
@@ -173,7 +174,59 @@ def update_zone_route(zone_id):
 def delete_zone_route(zone_id):
     conn = _conn()
     try:
+        layout_mod.unassign_zone(conn, zone_id)  # detach map features first
         zones_mod.remove_zone(conn, zone_id)
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+# --------------------------------------------------------------------------- #
+# Garden layout — physical map of beds/containers (features)                   #
+# --------------------------------------------------------------------------- #
+
+@api.get("/features")
+@require_auth
+def get_features():
+    conn = _conn()
+    try:
+        return jsonify(layout_mod.list_features(conn))
+    finally:
+        conn.close()
+
+
+@api.post("/features")
+@require_auth
+def create_feature():
+    data = request.get_json(silent=True) or {}
+    if data.get("shape") not in ("rect", "circle"):
+        return jsonify({"error": "shape must be 'rect' or 'circle'"}), 400
+    conn = _conn()
+    try:
+        fid = layout_mod.add_feature(conn, data)
+        return jsonify({"ok": True, "id": fid}), 201
+    finally:
+        conn.close()
+
+
+@api.patch("/features/<int:feature_id>")
+@require_auth
+def update_feature_route(feature_id):
+    data = request.get_json(silent=True) or {}
+    conn = _conn()
+    try:
+        layout_mod.update_feature(conn, feature_id, data)
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@api.delete("/features/<int:feature_id>")
+@require_auth
+def delete_feature_route(feature_id):
+    conn = _conn()
+    try:
+        layout_mod.remove_feature(conn, feature_id)
         return jsonify({"ok": True})
     finally:
         conn.close()

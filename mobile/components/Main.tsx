@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Dashboard from './Dashboard';
+import GardenMap from './GardenMap';
 import Setup from './Setup';
 import Planner from './Planner';
 import Health from './Health';
 
-type Tab = 'garden' | 'setup' | 'planner' | 'health';
+type Tab = 'garden' | 'map' | 'setup' | 'planner' | 'health';
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'garden', label: 'Garden', icon: '🌱' },
-  { key: 'setup', label: 'Setup', icon: '🪴' },
+  { key: 'map', label: 'Map', icon: '🗺️' },
+  { key: 'setup', label: 'Zones', icon: '🪴' },
   { key: 'planner', label: 'Planner', icon: '📋' },
   { key: 'health', label: 'Health', icon: '📷' },
 ];
@@ -24,6 +26,7 @@ export default function Main({ email }: { email?: string }) {
     <View style={styles.root}>
       <View style={styles.screen}>
         {tab === 'garden' && <Dashboard email={email} />}
+        {tab === 'map' && <GardenMap />}
         {tab === 'setup' && <Setup />}
         {tab === 'planner' && <Planner />}
         {tab === 'health' && <Health />}

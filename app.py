@@ -21,6 +21,7 @@ from flask_cors import CORS
 from plant_state import DB_PATH, init_db, log_reading
 from zones import init_zones_db
 from crop_planner import init_planner_db
+from garden_layout import init_layout_db
 from vision_analysis import CAPTURES_DIR, init_vision_db
 from api import api as api_blueprint
 
@@ -102,6 +103,7 @@ def _ensure_schema():
     init_vision_db().close()
     init_planner_db().close()
     init_zones_db().close()
+    init_layout_db().close()
 
 
 _ensure_schema()
