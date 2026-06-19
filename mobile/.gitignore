@@ -9,7 +9,9 @@ node_modules/
 
 # Expo
 .expo/
-dist/
+# NOTE: dist/ is intentionally committed — it's the exported web bundle that Flask
+# serves in production (the EC2 box has no Node to build it). Rebuild with
+# `npx expo export -p web` and commit the result. See deploy/README.md.
 web-build/
 expo-env.d.ts
 

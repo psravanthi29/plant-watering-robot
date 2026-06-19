@@ -27,6 +27,18 @@ bash deploy/setup_ec2.sh
 bash deploy/deploy.sh
 ```
 
+## Updating the web app (Expo → Flask)
+Flask serves the **exported Expo web bundle** at `mobile/dist/` (so thotamaali.com
+*is* the app). The EC2 box has no Node, so the bundle is **built locally and committed**:
+```bash
+cd mobile && npm run build:web   # == expo export -p web → mobile/dist/
+git add mobile/dist && git commit -m "Rebuild web bundle" && git push
+# then on the box:
+ssh thotamaali 'cd plant-watering-robot && bash deploy/deploy.sh'
+```
+Do this whenever you change anything under `mobile/`. (Native app builds are separate,
+via Expo Go / EAS, and just call `https://thotamaali.com/api`.)
+
 ## Files
 - `thotamaali.service` — systemd unit; runs gunicorn on 127.0.0.1:8000
   (`--workers 1 --threads 8 --timeout 120`). Reads `.env` via the app's load_dotenv().

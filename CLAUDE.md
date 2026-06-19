@@ -50,9 +50,12 @@ in `memory/deployment-hosting.md` and `deploy/README.md`.
    crops + placement).
 2. ✅ DONE — Render service suspended/deleted; keep-alive GitHub Action disabled; `deploy.sh`
    run to pick up the restored DB liveness check.
-3. **IN PROGRESS — resume the frontend roadmap:** Phase 5 (auth polish), Phase 6 (Flask serves
-   the Expo web build so thotamaali.com *becomes* the app, retiring the old HTML pages) — the
-   "web == mobile, one codebase" cutover. See `memory/zone-integration.md`.
+3. **Frontend roadmap:** Phase 5 (auth verify-email screen) ✅ done. Web↔mobile feature
+   parity (watering ops, planner depth/settings, vision read-only) ✅ built + deployed.
+   In-app photo capture: **deferred** (do it as a proper flow later). **Phase 6 (Flask
+   serves the Expo web build, old HTML pages retired) is BUILT — needs deploy + live check.**
+   `app.py` is now API + static-SPA only; web bundle committed at `mobile/dist/` (rebuild
+   with `cd mobile && npm run build:web`). See `memory/zone-integration.md`.
 
 ## The idea (starting scope — refine as we go)
 - One or more potted plants / a small grow-shelf
